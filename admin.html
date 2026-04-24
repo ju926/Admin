@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin Dashboard</title>
+<title>Admin Dashboard Pro</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -13,162 +13,250 @@ body{
   color:#fff;
 }
 
+/* HEADER */
 header{
   padding:20px;
   text-align:center;
   background:#111827;
+  color:#38bdf8;
   font-size:20px;
   font-weight:bold;
-  color:#38bdf8;
 }
 
+/* STATS */
 .stats{
   display:flex;
-  justify-content:space-around;
-  padding:15px;
+  gap:10px;
   flex-wrap:wrap;
+  padding:15px;
 }
 
 .card{
+  flex:1;
+  min-width:120px;
   background:#111827;
   padding:15px;
   border-radius:12px;
-  margin:10px;
-  flex:1;
-  min-width:120px;
   text-align:center;
   border:1px solid rgba(255,255,255,0.08);
 }
 
-.orders{
-  padding:15px;
+.card h3{
+  margin:5px 0;
 }
 
+/* SEARCH */
+.search{
+  padding:0 15px;
+}
+
+.search input{
+  width:100%;
+  padding:10px;
+  border-radius:8px;
+  border:none;
+  margin-bottom:10px;
+}
+
+/* FILTER */
+.filters{
+  display:flex;
+  gap:10px;
+  padding:0 15px 10px;
+}
+
+.filters button{
+  flex:1;
+  padding:8px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#1f2937;
+  color:#fff;
+}
+
+/* ORDERS */
 .order{
   background:#111827;
-  padding:15px;
+  margin:10px 15px;
+  padding:12px;
   border-radius:12px;
-  margin-bottom:10px;
   display:flex;
-  gap:15px;
+  gap:10px;
   align-items:center;
   border:1px solid rgba(255,255,255,0.08);
 }
 
 .order img{
-  width:80px;
-  height:80px;
-  border-radius:10px;
+  width:70px;
+  height:70px;
   object-fit:cover;
+  border-radius:8px;
 }
 
 .info{
   flex:1;
+  font-size:13px;
 }
 
 .status{
-  font-size:12px;
-  padding:4px 8px;
+  padding:3px 8px;
   border-radius:6px;
-  display:inline-block;
+  font-size:11px;
 }
 
 .pending{background:#f59e0b;}
 .approved{background:#22c55e;}
 .rejected{background:#ef4444;}
 
+/* BUTTONS */
 button{
-  padding:6px 10px;
+  padding:5px 8px;
   border:none;
   border-radius:6px;
   cursor:pointer;
-  margin:2px;
 }
 
 .approve{background:#22c55e;color:#fff;}
 .reject{background:#ef4444;color:#fff;}
+.view{background:#3b82f6;color:#fff;margin-right:5px;}
+
+/* MODAL */
+.modal{
+  display:none;
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+  background:rgba(0,0,0,0.7);
+}
+
+.modal-content{
+  background:#111827;
+  width:90%;
+  max-width:400px;
+  margin:80px auto;
+  padding:15px;
+  border-radius:12px;
+}
 </style>
 </head>
 
 <body>
 
-<header>📊 Admin Dashboard</header>
+<header>📊 Admin Dashboard Pro</header>
 
 <!-- STATS -->
 <div class="stats">
-  <div class="card">
-    <h3 id="totalOrders">0</h3>
-    <p>Total Orders</p>
-  </div>
+  <div class="card"><h3 id="total">0</h3><p>Total Orders</p></div>
+  <div class="card"><h3 id="pending">0</h3><p>Pending</p></div>
+  <div class="card"><h3 id="approved">0</h3><p>Approved</p></div>
+  <div class="card"><h3 id="revenue">0</h3><p>Revenue</p></div>
+</div>
 
-  <div class="card">
-    <h3 id="pending">0</h3>
-    <p>Pending</p>
-  </div>
+<!-- SEARCH -->
+<div class="search">
+  <input id="search" placeholder="Search transaction ID..." oninput="render()">
+</div>
 
-  <div class="card">
-    <h3 id="revenue">0</h3>
-    <p>Revenue</p>
-  </div>
+<!-- FILTER -->
+<div class="filters">
+  <button onclick="setFilter('all')">All</button>
+  <button onclick="setFilter('pending')">Pending</button>
+  <button onclick="setFilter('approved')">Approved</button>
+  <button onclick="setFilter('rejected')">Rejected</button>
 </div>
 
 <!-- ORDERS -->
-<div class="orders" id="orders"></div>
+<div id="orders"></div>
+
+<!-- MODAL -->
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <h3>Order Details</h3>
+    <div id="details"></div>
+    <button onclick="closeModal()">Close</button>
+  </div>
+</div>
 
 <script>
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
-let allOrders = [];
+let orders = [];
+let filter = "all";
 
-/* LOAD ORDERS */
-function loadOrders(){
+/* LOAD */
+function load(){
   fetch(API + "/orders")
   .then(res => res.json())
   .then(data => {
-    allOrders = data;
+    orders = data;
     render();
-    updateStats();
+    stats();
   });
 }
 
-/* RENDER ORDERS */
+/* STATS */
+function stats(){
+  document.getElementById("total").innerText = orders.length;
+  document.getElementById("pending").innerText = orders.filter(o=>o.status==="pending").length;
+  document.getElementById("approved").innerText = orders.filter(o=>o.status==="approved").length;
+
+  let revenue = orders
+    .filter(o=>o.status==="approved")
+    .reduce((a,b)=>a+b.amount,0);
+
+  document.getElementById("revenue").innerText = revenue;
+}
+
+/* FILTER */
+function setFilter(f){
+  filter = f;
+  render();
+}
+
+/* RENDER */
 function render(){
+
+  let search = document.getElementById("search").value.toLowerCase();
+
+  let list = orders.filter(o=>{
+
+    let matchFilter = filter==="all" || o.status===filter;
+    let matchSearch = o.transactionId.toLowerCase().includes(search);
+
+    return matchFilter && matchSearch;
+  });
 
   let html = "";
 
-  allOrders.reverse().forEach(order => {
+  list.reverse().forEach(o=>{
 
-    let items = order.cart.map(p =>
-      `<img src="${p.img}" onerror="this.src='https://via.placeholder.com/80'">`
-    ).join("");
+    let img = o.cart[0]?.img || "";
 
     html += `
       <div class="order">
 
-        ${items}
+        <img src="${img}" onerror="this.src='https://via.placeholder.com/70'">
 
         <div class="info">
-          <b>${order.method}</b><br>
-          💰 KES ${order.amount}<br>
-          🆔 ${order.transactionId}<br>
-          ⏰ ${order.time}<br>
+          <b>${o.method}</b><br>
+          💰 ${o.amount} KES<br>
+          🆔 ${o.transactionId}<br>
 
-          <span class="status ${order.status}">
-            ${order.status}
+          <span class="status ${o.status}">
+            ${o.status}
           </span>
         </div>
 
-        ${
-          order.status === "pending"
-          ? `
-            <div>
-              <button class="approve" onclick="update('${order._id}','approved')">Approve</button>
-              <button class="reject" onclick="update('${order._id}','rejected')">Reject</button>
-            </div>
-          `
-          : `<b>${order.status.toUpperCase()}</b>`
-        }
+        <div>
+          <button class="view" onclick='view(${JSON.stringify(o)})'>View</button>
+
+          ${o.status==="pending" ? `
+            <button class="approve" onclick="update('${o._id}','approved')">✔</button>
+            <button class="reject" onclick="update('${o._id}','rejected')">✖</button>
+          ` : ""}
+        </div>
 
       </div>
     `;
@@ -180,33 +268,41 @@ function render(){
 /* UPDATE STATUS */
 function update(id,status){
 
-  fetch(API + "/order-status", {
+  fetch(API+"/order-status",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({id,status})
-  })
-  .then(() => loadOrders());
+  }).then(load);
 
 }
 
-/* STATS */
-function updateStats(){
+/* VIEW DETAILS */
+function view(order){
 
-  document.getElementById("totalOrders").innerText = allOrders.length;
+  document.getElementById("modal").style.display="block";
 
-  document.getElementById("pending").innerText =
-    allOrders.filter(o => o.status === "pending").length;
+  let items = order.cart.map(p=>
+    `<p>${p.name} x${p.quantity} - ${p.price}</p>`
+  ).join("");
 
-  document.getElementById("revenue").innerText =
-    allOrders
-    .filter(o => o.status === "approved")
-    .reduce((a,b)=>a + b.amount,0);
+  document.getElementById("details").innerHTML = `
+    <p><b>Method:</b> ${order.method}</p>
+    <p><b>TX ID:</b> ${order.transactionId}</p>
+    <p><b>Amount:</b> ${order.amount}</p>
+    <p><b>Status:</b> ${order.status}</p>
+    <hr>
+    <h4>Items</h4>
+    ${items}
+  `;
+}
 
+function closeModal(){
+  document.getElementById("modal").style.display="none";
 }
 
 /* AUTO REFRESH */
-setInterval(loadOrders,5000);
-loadOrders();
+setInterval(load,5000);
+load();
 
 </script>
 
