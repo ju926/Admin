@@ -1,14 +1,23 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Admin</title>
+<meta charset="UTF-8">
+<title>Admin Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
+  margin:0;
   font-family:Arial;
   background:#0b1220;
   color:#fff;
+}
+
+header{
+  padding:15px;
+  background:#111827;
+  text-align:center;
+  color:#38bdf8;
 }
 
 .order{
@@ -18,29 +27,51 @@ body{
   border-radius:10px;
   display:flex;
   gap:10px;
+  align-items:center;
 }
 
 img{
   width:60px;
   height:60px;
   border-radius:8px;
+  object-fit:cover;
 }
 
 button{
-  padding:6px;
-  margin:3px;
+  padding:6px 10px;
   border:none;
-  border-radius:5px;
+  border-radius:6px;
+  cursor:pointer;
 }
 
-.approve{background:green;color:#fff;}
-.reject{background:red;color:#fff;}
+.approve{background:#22c55e;color:#fff;}
+.reject{background:#ef4444;color:#fff;}
+
+.status{
+  font-size:12px;
+  padding:3px 6px;
+  border-radius:5px;
+  background:#334155;
+}
+
+#logout{
+  position:fixed;
+  top:10px;
+  right:10px;
+  background:#ef4444;
+  color:#fff;
+  padding:8px 10px;
+  border:none;
+  border-radius:6px;
+}
 </style>
 </head>
 
 <body>
 
-<h2 style="text-align:center">Admin Dashboard</h2>
+<button id="logout" onclick="logout()">Logout</button>
+
+<header>📊 Admin Dashboard</header>
 
 <div id="orders"></div>
 
@@ -48,44 +79,65 @@ button{
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
-let orders = [];
-
-function loadOrders(){
-  fetch(API+"/orders")
-  .then(r=>r.json())
-  .then(data=>{
-    orders = data;
-    render();
-  });
+/* 🔐 LOGIN CHECK */
+if(localStorage.getItem("adminLoggedIn") !== "true"){
+  window.location.href = "index.html";
 }
 
+function logout(){
+  localStorage.removeItem("adminLoggedIn");
+  window.location.href = "index.html";
+}
+
+let orders = [];
+
+/* LOAD ORDERS */
+function loadOrders(){
+
+  fetch(API + "/orders")
+  .then(res => res.json())
+  .then(data => {
+    orders = data;
+    render();
+  })
+  .catch(err=>{
+    console.log(err);
+    document.getElementById("orders").innerHTML =
+      "<h3 style='text-align:center'>Server error loading orders</h3>";
+  });
+
+}
+
+/* RENDER */
 function render(){
 
   let html = "";
 
   orders.slice().reverse().forEach(o=>{
 
+    let img = o.cart?.[0]?.img || "https://via.placeholder.com/60";
+
     html += `
       <div class="order">
 
-        <img src="${o.cart?.[0]?.img || ''}">
+        <img src="${img}">
 
         <div style="flex:1">
           <b>${o.method}</b><br>
-          ${o.amount} KES<br>
-          ${o.transactionId}<br>
-          <small>${o.status}</small>
+          💰 ${o.amount} KES<br>
+          🆔 ${o.transactionId}<br>
+          <span class="status">${o.status}</span>
         </div>
 
         ${
-          o.status==="pending"
+          o.status === "pending"
           ? `
             <div>
-              <button class="approve" onclick="update(${o.id},'approved')">A</button>
-              <button class="reject" onclick="update(${o.id},'rejected')">R</button>
+              <button class="approve" onclick="update(${o.id},'approved')">✔</button>
+              <button class="reject" onclick="update(${o.id},'rejected')">✖</button>
             </div>
           `
-          : `<b>${o.status}</b>`
+          : `<b>${o.status.toUpperCase()}</b>`
         }
 
       </div>
@@ -95,17 +147,19 @@ function render(){
   document.getElementById("orders").innerHTML = html;
 }
 
+/* UPDATE ORDER */
 function update(id,status){
 
-  fetch(API+"/order-status",{
+  fetch(API + "/order-status",{
     method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({id,status})
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ id, status })
   })
   .then(()=>loadOrders());
 
 }
 
+/* AUTO REFRESH */
 setInterval(loadOrders,4000);
 loadOrders();
 
