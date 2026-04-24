@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#0b1220;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  color:white;
+}
+
+.box{
+  background:#111827;
+  padding:25px;
+  border-radius:15px;
+  width:320px;
+  text-align:center;
+}
+
+input{
+  width:100%;
+  padding:10px;
+  margin:10px 0;
+  border:none;
+  border-radius:8px;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  background:#2563eb;
+  border:none;
+  border-radius:8px;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.error{
+  color:red;
+  font-size:13px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+  <h2>Admin Login</h2>
+
+  <input type="password" id="pass" placeholder="Enter password">
+  <button onclick="login()">Login</button>
+
+  <p class="error" id="error"></p>
+</div>
+
+<script>
+
+function login(){
+
+  fetch("https://phone-store-backend-9w7p.onrender.com/admin/login", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      username: "admin",
+      password: document.getElementById("pass").value
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+
+    if(data.token){
+      localStorage.setItem("adminToken", data.token);
+      window.location.href = "admin.html";
+    } else {
+      document.getElementById("error").innerText = "Wrong password";
+    }
+
+  });
+
+}
+
+</script>
+
+</body>
+</html>
