@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin Dashboard</title>
+<title>Admin Dashboard Pro</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -14,12 +14,33 @@ body{
 }
 
 header{
-  padding:15px;
   background:#111827;
+  padding:15px;
   text-align:center;
   color:#38bdf8;
 }
 
+/* STATS */
+.stats{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:10px;
+  padding:10px;
+}
+
+.card{
+  background:#111827;
+  padding:15px;
+  border-radius:10px;
+  text-align:center;
+}
+
+.card h2{
+  margin:5px 0;
+  color:#22c55e;
+}
+
+/* ORDERS */
 .order{
   background:#111827;
   margin:10px;
@@ -30,7 +51,7 @@ header{
   align-items:center;
 }
 
-img{
+.order img{
   width:60px;
   height:60px;
   border-radius:8px;
@@ -38,7 +59,7 @@ img{
 }
 
 button{
-  padding:6px 10px;
+  padding:6px 8px;
   border:none;
   border-radius:6px;
   cursor:pointer;
@@ -54,13 +75,14 @@ button{
   background:#334155;
 }
 
+/* logout */
 #logout{
   position:fixed;
   top:10px;
   right:10px;
   background:#ef4444;
   color:#fff;
-  padding:8px 10px;
+  padding:8px;
   border:none;
   border-radius:6px;
 }
@@ -71,15 +93,41 @@ button{
 
 <button id="logout" onclick="logout()">Logout</button>
 
-<header>📊 Admin Dashboard</header>
+<header>📊 Admin Dashboard Pro</header>
 
+<!-- STATS -->
+<div class="stats">
+
+  <div class="card">
+    <h3>Total Orders</h3>
+    <h2 id="total">0</h2>
+  </div>
+
+  <div class="card">
+    <h3>Pending</h3>
+    <h2 id="pending">0</h2>
+  </div>
+
+  <div class="card">
+    <h3>Approved</h3>
+    <h2 id="approved">0</h2>
+  </div>
+
+  <div class="card">
+    <h3>Revenue</h3>
+    <h2 id="revenue">0</h2>
+  </div>
+
+</div>
+
+<!-- ORDERS -->
 <div id="orders"></div>
 
 <script>
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
-/* 🔐 LOGIN CHECK */
+/* LOGIN CHECK */
 if(localStorage.getItem("adminLoggedIn") !== "true"){
   window.location.href = "index.html";
 }
@@ -91,25 +139,38 @@ function logout(){
 
 let orders = [];
 
-/* LOAD ORDERS */
+/* LOAD */
 function loadOrders(){
 
   fetch(API + "/orders")
   .then(res => res.json())
-  .then(data => {
+  .then(data=>{
     orders = data;
-    render();
-  })
-  .catch(err=>{
-    console.log(err);
-    document.getElementById("orders").innerHTML =
-      "<h3 style='text-align:center'>Server error loading orders</h3>";
+    renderStats();
+    renderOrders();
   });
 
 }
 
-/* RENDER */
-function render(){
+/* STATS */
+function renderStats(){
+
+  let total = orders.length;
+  let pending = orders.filter(o=>o.status==="pending").length;
+  let approved = orders.filter(o=>o.status==="approved").length;
+  let revenue = orders
+    .filter(o=>o.status==="approved")
+    .reduce((sum,o)=>sum + (o.amount || 0),0);
+
+  document.getElementById("total").innerText = total;
+  document.getElementById("pending").innerText = pending;
+  document.getElementById("approved").innerText = approved;
+  document.getElementById("revenue").innerText = revenue;
+
+}
+
+/* ORDERS */
+function renderOrders(){
 
   let html = "";
 
@@ -124,13 +185,13 @@ function render(){
 
         <div style="flex:1">
           <b>${o.method}</b><br>
-          💰 ${o.amount} KES<br>
-          🆔 ${o.transactionId}<br>
+          ${o.amount} KES<br>
+          ${o.transactionId}<br>
           <span class="status">${o.status}</span>
         </div>
 
         ${
-          o.status === "pending"
+          o.status==="pending"
           ? `
             <div>
               <button class="approve" onclick="update(${o.id},'approved')">✔</button>
@@ -147,13 +208,13 @@ function render(){
   document.getElementById("orders").innerHTML = html;
 }
 
-/* UPDATE ORDER */
+/* UPDATE */
 function update(id,status){
 
-  fetch(API + "/order-status",{
+  fetch(API+"/order-status",{
     method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ id, status })
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({id,status})
   })
   .then(()=>loadOrders());
 
