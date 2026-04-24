@@ -2,189 +2,210 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body{
   margin:0;
   font-family:Arial;
   background:#0b1220;
-  color:white;
+  color:#fff;
 }
 
-.container{
-  max-width:900px;
-  margin:auto;
+header{
   padding:20px;
-}
-
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:20px;
-}
-
-h2{
+  text-align:center;
+  background:#111827;
+  font-size:20px;
+  font-weight:bold;
   color:#38bdf8;
+}
+
+.stats{
+  display:flex;
+  justify-content:space-around;
+  padding:15px;
+  flex-wrap:wrap;
 }
 
 .card{
   background:#111827;
   padding:15px;
-  margin:10px 0;
   border-radius:12px;
+  margin:10px;
+  flex:1;
+  min-width:120px;
+  text-align:center;
+  border:1px solid rgba(255,255,255,0.08);
+}
+
+.orders{
+  padding:15px;
+}
+
+.order{
+  background:#111827;
+  padding:15px;
+  border-radius:12px;
+  margin-bottom:10px;
   display:flex;
   gap:15px;
   align-items:center;
+  border:1px solid rgba(255,255,255,0.08);
 }
 
-img{
-  width:90px;
-  height:90px;
-  object-fit:cover;
+.order img{
+  width:80px;
+  height:80px;
   border-radius:10px;
+  object-fit:cover;
+}
+
+.info{
+  flex:1;
 }
 
 .status{
-  padding:4px 10px;
-  border-radius:6px;
   font-size:12px;
+  padding:4px 8px;
+  border-radius:6px;
   display:inline-block;
 }
 
-.pending{background:yellow;color:black;}
-.approved{background:green;}
-.rejected{background:red;}
+.pending{background:#f59e0b;}
+.approved{background:#22c55e;}
+.rejected{background:#ef4444;}
 
 button{
   padding:6px 10px;
-  margin-right:5px;
   border:none;
   border-radius:6px;
   cursor:pointer;
+  margin:2px;
 }
 
-.approve{background:green;color:white;}
-.reject{background:red;color:white;}
-
-.logout{
-  background:red;
-  color:white;
-  padding:8px 12px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-}
+.approve{background:#22c55e;color:#fff;}
+.reject{background:#ef4444;color:#fff;}
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<header>📊 Admin Dashboard</header>
 
-<div class="topbar">
-  <h2>📦 Orders Dashboard</h2>
-  <button class="logout" onclick="logout()">Logout</button>
+<!-- STATS -->
+<div class="stats">
+  <div class="card">
+    <h3 id="totalOrders">0</h3>
+    <p>Total Orders</p>
+  </div>
+
+  <div class="card">
+    <h3 id="pending">0</h3>
+    <p>Pending</p>
+  </div>
+
+  <div class="card">
+    <h3 id="revenue">0</h3>
+    <p>Revenue</p>
+  </div>
 </div>
 
-<div id="orders">Loading orders...</div>
-
-</div>
+<!-- ORDERS -->
+<div class="orders" id="orders"></div>
 
 <script>
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
-/* CHECK LOGIN */
-if(!localStorage.getItem("adminToken")){
-  window.location.href = "admin-login.html";
-}
-
-/* LOGOUT */
-function logout(){
-  localStorage.removeItem("adminToken");
-  window.location.href = "admin-login.html";
-}
+let allOrders = [];
 
 /* LOAD ORDERS */
 function loadOrders(){
-
-  fetch(API + "/orders", {
-    headers:{
-      "Authorization": localStorage.getItem("adminToken")
-    }
-  })
+  fetch(API + "/orders")
   .then(res => res.json())
   .then(data => {
-
-    let box = document.getElementById("orders");
-    box.innerHTML = "";
-
-    if(data.length === 0){
-      box.innerHTML = "<p>No orders yet</p>";
-      return;
-    }
-
-    data.reverse().forEach(order => {
-
-      let item = order.cart?.[0] || {};
-
-      box.innerHTML += `
-        <div class="card">
-
-          <img src="${item.img || ''}">
-
-          <div>
-
-            <div><b>${item.name || 'Item'}</b></div>
-            <div>KES ${order.amount}</div>
-            <div>TX: ${order.transactionId}</div>
-            <div>Method: ${order.method}</div>
-
-            <div class="status ${order.status}">
-              ${order.status}
-            </div>
-
-            <br>
-
-            <button class="approve" onclick="update(${order.id}, 'approved')">Approve</button>
-            <button class="reject" onclick="update(${order.id}, 'rejected')">Reject</button>
-
-          </div>
-
-        </div>
-      `;
-    });
-
-  })
-  .catch(err => {
-    document.getElementById("orders").innerHTML =
-      "Error loading orders";
+    allOrders = data;
+    render();
+    updateStats();
   });
-
 }
 
-/* UPDATE ORDER STATUS */
-function update(id, status){
+/* RENDER ORDERS */
+function render(){
+
+  let html = "";
+
+  allOrders.reverse().forEach(order => {
+
+    let items = order.cart.map(p =>
+      `<img src="${p.img}" onerror="this.src='https://via.placeholder.com/80'">`
+    ).join("");
+
+    html += `
+      <div class="order">
+
+        ${items}
+
+        <div class="info">
+          <b>${order.method}</b><br>
+          💰 KES ${order.amount}<br>
+          🆔 ${order.transactionId}<br>
+          ⏰ ${order.time}<br>
+
+          <span class="status ${order.status}">
+            ${order.status}
+          </span>
+        </div>
+
+        ${
+          order.status === "pending"
+          ? `
+            <div>
+              <button class="approve" onclick="update('${order._id}','approved')">Approve</button>
+              <button class="reject" onclick="update('${order._id}','rejected')">Reject</button>
+            </div>
+          `
+          : `<b>${order.status.toUpperCase()}</b>`
+        }
+
+      </div>
+    `;
+  });
+
+  document.getElementById("orders").innerHTML = html;
+}
+
+/* UPDATE STATUS */
+function update(id,status){
 
   fetch(API + "/order-status", {
     method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "Authorization": localStorage.getItem("adminToken")
-    },
-    body: JSON.stringify({ id, status })
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({id,status})
   })
   .then(() => loadOrders());
 
 }
 
-/* AUTO REFRESH EVERY 5 SECONDS */
-setInterval(loadOrders, 5000);
+/* STATS */
+function updateStats(){
 
-/* INITIAL LOAD */
+  document.getElementById("totalOrders").innerText = allOrders.length;
+
+  document.getElementById("pending").innerText =
+    allOrders.filter(o => o.status === "pending").length;
+
+  document.getElementById("revenue").innerText =
+    allOrders
+    .filter(o => o.status === "approved")
+    .reduce((a,b)=>a + b.amount,0);
+
+}
+
+/* AUTO REFRESH */
+setInterval(loadOrders,5000);
 loadOrders();
 
 </script>
