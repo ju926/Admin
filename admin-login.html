@@ -80,12 +80,19 @@ function login(){
   .then(data => {
 
     if(data.token){
+
       localStorage.setItem("adminToken", data.token);
+
+      // ✅ GO TO DASHBOARD
       window.location.href = "admin.html";
+
     } else {
       document.getElementById("error").innerText = "Wrong password";
     }
 
+  })
+  .catch(() => {
+    document.getElementById("error").innerText = "Server error";
   });
 
 }
