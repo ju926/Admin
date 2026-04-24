@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Admin Control Center</title>
+<title>Admin Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -14,14 +14,12 @@ body{
 }
 
 header{
-  padding:15px;
   background:#111827;
+  padding:15px;
   text-align:center;
   color:#38bdf8;
-  font-size:18px;
 }
 
-/* STATS */
 .stats{
   display:grid;
   grid-template-columns:repeat(3,1fr);
@@ -31,34 +29,11 @@ header{
 
 .card{
   background:#111827;
-  padding:12px;
+  padding:10px;
   border-radius:10px;
   text-align:center;
 }
 
-.card h3{
-  font-size:12px;
-  color:#94a3b8;
-}
-
-.card h2{
-  margin:5px 0;
-  color:#22c55e;
-}
-
-/* SEARCH */
-.search{
-  padding:10px;
-}
-
-.search input{
-  width:100%;
-  padding:10px;
-  border:none;
-  border-radius:8px;
-}
-
-/* ORDER */
 .order{
   background:#111827;
   margin:10px;
@@ -66,195 +41,120 @@ header{
   border-radius:10px;
   display:flex;
   gap:10px;
-  align-items:center;
 }
 
-.order img{
+img{
   width:60px;
   height:60px;
   border-radius:8px;
-  object-fit:cover;
-}
-
-.status{
-  font-size:11px;
-  padding:3px 6px;
-  border-radius:5px;
-  background:#334155;
 }
 
 button{
-  padding:5px 7px;
+  margin:3px;
+  padding:5px;
   border:none;
   border-radius:6px;
-  cursor:pointer;
-  margin:2px;
 }
 
 .approve{background:#22c55e;color:#fff;}
 .reject{background:#ef4444;color:#fff;}
-.deliver{background:#f59e0b;color:#fff;}
-
-#logout{
-  position:fixed;
-  top:10px;
-  right:10px;
-  background:#ef4444;
-  color:#fff;
-  padding:8px;
-  border:none;
-  border-radius:6px;
-}
 </style>
 </head>
 
 <body>
 
-<button id="logout" onclick="logout()">Logout</button>
+<header>Admin Dashboard</header>
 
-<header>📊 Admin Control Center</header>
-
-<!-- STATS -->
 <div class="stats">
-
-  <div class="card"><h3>Total</h3><h2 id="total">0</h2></div>
-  <div class="card"><h3>Pending</h3><h2 id="pending">0</h2></div>
-  <div class="card"><h3>Approved</h3><h2 id="approved">0</h2></div>
-  <div class="card"><h3>Rejected</h3><h2 id="rejected">0</h2></div>
-  <div class="card"><h3>Revenue</h3><h2 id="revenue">0</h2></div>
-  <div class="card"><h3>Today</h3><h2 id="today">0</h2></div>
-
+  <div class="card"><h3>Total</h3><h2 id="t">0</h2></div>
+  <div class="card"><h3>Pending</h3><h2 id="p">0</h2></div>
+  <div class="card"><h3>Revenue</h3><h2 id="r">0</h2></div>
 </div>
 
-<!-- SEARCH -->
-<div class="search">
-  <input id="search" oninput="render()" placeholder="Search transaction ID...">
-</div>
-
-<!-- ORDERS -->
 <div id="orders"></div>
 
 <script>
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
-/* LOGIN CHECK */
 if(localStorage.getItem("adminLoggedIn") !== "true"){
-  window.location.href = "index.html";
+  window.location.href="index.html";
 }
 
-function logout(){
-  localStorage.removeItem("adminLoggedIn");
-  window.location.href = "index.html";
-}
+function load(){
 
-let orders = [];
-
-/* LOAD */
-function loadOrders(){
-
-  fetch(API+"/orders")
-  .then(res=>res.json())
-  .then(data=>{
-    orders = data;
-    updateStats();
-    render();
-  });
+fetch(API+"/orders")
+.then(r=>r.json())
+.then(data=>{
+  orders = data;
+  render();
+  stats();
+});
 
 }
 
-/* STATS */
-function updateStats(){
+function stats(){
 
-  document.getElementById("total").innerText = orders.length;
-  document.getElementById("pending").innerText =
+  document.getElementById("t").innerText = orders.length;
+  document.getElementById("p").innerText =
     orders.filter(o=>o.status==="pending").length;
 
-  document.getElementById("approved").innerText =
-    orders.filter(o=>o.status==="approved").length;
-
-  document.getElementById("rejected").innerText =
-    orders.filter(o=>o.status==="rejected").length;
-
-  document.getElementById("revenue").innerText =
+  document.getElementById("r").innerText =
     orders.filter(o=>o.status==="approved")
-          .reduce((s,o)=>s+(o.amount||0),0);
+    .reduce((s,o)=>s+(o.amount||0),0);
 
 }
 
-/* RENDER */
 function render(){
 
-  let q = document.getElementById("search").value.toLowerCase();
+let html="";
 
-  let html = "";
+orders.slice().reverse().forEach(o=>{
 
-  orders.slice().reverse()
-  .filter(o=>o.transactionId.toLowerCase().includes(q))
-  .forEach(o=>{
+html+=`
+<div class="order">
 
-    let img = o.cart?.[0]?.img || "https://via.placeholder.com/60";
+<img src="${o.cart?.[0]?.img || "https://via.placeholder.com/60"}">
 
-    html += `
-      <div class="order">
+<div style="flex:1">
+<b>${o.method}</b><br>
+${o.amount} KES<br>
+${o.transactionId}<br>
+${o.status}<br>
+${o.tracking || ""}
+</div>
 
-        <img src="${img}">
-
-        <div style="flex:1">
-          <b>${o.method}</b><br>
-          ${o.amount} KES<br>
-          ${o.transactionId}<br>
-          <span class="status">${o.status}</span><br>
-          🚚 ${o.delivery || "processing"}
-        </div>
-
-        <div>
-
-          ${
-            o.status==="pending"
-            ? `
-              <button class="approve" onclick="update(${o.id},'approved')">✔</button>
-              <button class="reject" onclick="update(${o.id},'rejected')">✖</button>
-            `
-            : ""
-          }
-
-          <button class="deliver" onclick="deliver(${o.id})">🚚</button>
-
-        </div>
-
-      </div>
-    `;
-  });
-
-  document.getElementById("orders").innerHTML = html;
+<div>
+${
+o.status==="pending"
+? `
+<button class="approve" onclick="act(${o.id},'approved')">✔</button>
+<button class="reject" onclick="act(${o.id},'rejected')">✖</button>
+`
+: ""
 }
+</div>
 
-/* STATUS UPDATE */
-function update(id,status){
+</div>
+`;
+});
 
-  fetch(API+"/order-status",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({id,status})
-  }).then(()=>loadOrders());
+document.getElementById("orders").innerHTML = html;
 
 }
 
-/* DELIVERY */
-function deliver(id){
+function act(id,status){
 
-  fetch(API+"/delivery",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({id,delivery:"delivered"})
-  }).then(()=>loadOrders());
+fetch(API+"/order-status",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id,status})
+}).then(()=>load());
 
 }
 
-/* AUTO REFRESH */
-setInterval(loadOrders,5000);
-loadOrders();
+setInterval(load,4000);
+load();
 
 </script>
 
