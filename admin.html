@@ -20,57 +20,37 @@ header{
   color:#38bdf8;
 }
 
-.stats{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-  padding:10px;
-}
-
 .card{
   background:#111827;
   padding:12px;
-  border-radius:10px;
-  text-align:center;
-}
-
-.chart{
-  margin:15px;
-  background:#111827;
-  padding:15px;
+  margin:10px;
   border-radius:10px;
 }
 
-.bar{
-  height:20px;
+input{
+  width:100%;
+  padding:8px;
   margin:5px 0;
-  border-radius:5px;
+  border:none;
+  border-radius:6px;
 }
 
-.pendingBar{background:#facc15;}
-.approvedBar{background:#22c55e;}
+button{
+  padding:8px;
+  margin-top:5px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.add{background:#22c55e;color:#fff;}
+.delete{background:#ef4444;color:#fff;}
 
 .order{
   background:#111827;
   margin:10px;
   padding:12px;
   border-radius:10px;
-}
-
-button{
-  padding:6px 10px;
-  margin:3px;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
-}
-
-.approve{background:#22c55e;color:#fff;}
-.reject{background:#ef4444;color:#fff;}
-
-select{
-  margin-top:5px;
-  padding:5px;
 }
 </style>
 </head>
@@ -79,143 +59,102 @@ select{
 
 <header>📊 Admin Dashboard</header>
 
-<!-- STATS -->
-<div class="stats">
-  <div class="card">
-    <h3>Total</h3>
-    <h2 id="total">0</h2>
-  </div>
+<!-- PRODUCT SECTION -->
+<div class="card">
+<h3>Add Product</h3>
 
-  <div class="card">
-    <h3>Pending</h3>
-    <h2 id="pending">0</h2>
-  </div>
+<input id="pname" placeholder="Phone name">
+<input id="pprice" placeholder="Price">
+<input id="pimage" placeholder="Image URL">
 
-  <div class="card">
-    <h3>Revenue</h3>
-    <h2 id="revenue">0</h2>
-  </div>
+<button class="add" onclick="addProduct()">Add Product</button>
 </div>
 
-<!-- CHART -->
-<div class="chart">
-  <h3>Order Status Overview</h3>
-  <p>Pending</p>
-  <div id="pendingBar" class="bar pendingBar"></div>
+<div id="productList"></div>
 
-  <p>Approved</p>
-  <div id="approvedBar" class="bar approvedBar"></div>
-</div>
+<hr>
 
+<!-- ORDERS -->
 <div id="orders"></div>
 
 <script>
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
-let orders = [];
+/* ================= PRODUCTS ================= */
 
-function load(){
+function addProduct(){
+fetch(API+"/add-product",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+name:pname.value,
+price:pprice.value,
+image:pimage.value
+})
+})
+.then(()=>loadProducts());
+}
+
+function loadProducts(){
+
+fetch(API+"/products")
+.then(res=>res.json())
+.then(data=>{
+
+let html="";
+
+data.forEach(p=>{
+html+=`
+<div class="order">
+<h3>${p.name}</h3>
+<p>${p.price} KES</p>
+<img src="${p.image}" width="80"><br>
+<button class="delete" onclick="deleteProduct(${p.id})">Delete</button>
+</div>`;
+});
+
+productList.innerHTML = html;
+
+});
+}
+
+function deleteProduct(id){
+fetch(API+"/delete-product",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id})
+})
+.then(()=>loadProducts());
+}
+
+/* ================= ORDERS ================= */
+
+function loadOrders(){
 
 fetch(API+"/orders")
 .then(res=>res.json())
 .then(data=>{
 
-orders = data.filter(o => o.status !== "rejected");
+let html="";
 
-updateStats();
-render();
-
-});
-
-}
-
-function updateStats(){
-
-let total = orders.length;
-let pending = orders.filter(o=>o.status==="pending").length;
-let approved = orders.filter(o=>o.status==="approved").length;
-
-let revenue = orders
-.filter(o=>o.status==="approved")
-.reduce((sum,o)=>sum+(o.amount||0),0);
-
-document.getElementById("total").innerText = total;
-document.getElementById("pending").innerText = pending;
-document.getElementById("revenue").innerText = revenue;
-
-/* UPDATE BARS */
-document.getElementById("pendingBar").style.width = (pending*20)+"px";
-document.getElementById("approvedBar").style.width = (approved*20)+"px";
-
-}
-
-function render(){
-
-let html = "";
-
-orders.slice().reverse().forEach(o=>{
-
-html += `
+data.forEach(o=>{
+html+=`
 <div class="order">
-
 <h3>${o.amount} KES</h3>
-
 <p>${o.phone}</p>
-<p>${o.location}</p>
-
 <p>Status: ${o.status}</p>
-
-<select onchange="updateTracking(${o.id}, this.value)">
-  <option ${o.tracking==="Order placed"?"selected":""}>Order placed</option>
-  <option ${o.tracking==="Processing"?"selected":""}>Processing</option>
-  <option ${o.tracking==="Shipped"?"selected":""}>Shipped</option>
-  <option ${o.tracking==="Delivered"?"selected":""}>Delivered</option>
-</select>
-
-<br><br>
-
-${
-o.status==="pending"
-? `
-<button class="approve" onclick="updateStatus(${o.id},'approved')">Approve</button>
-<button class="reject" onclick="updateStatus(${o.id},'rejected')">Reject</button>
-`
-: ""
-}
-
-</div>
-`;
+</div>`;
 });
 
-document.getElementById("orders").innerHTML = html;
+orders.innerHTML = html;
 
+});
 }
 
-function updateStatus(id,status){
-
-fetch(API+"/order-status",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id,status})
-})
-.then(()=>load());
-
-}
-
-function updateTracking(id,tracking){
-
-fetch(API+"/tracking",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id,tracking})
-})
-.then(()=>load());
-
-}
-
-setInterval(load,5000);
-load();
+/* INIT */
+loadProducts();
+loadOrders();
 
 </script>
 
