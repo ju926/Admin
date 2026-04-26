@@ -4,14 +4,47 @@
 <meta charset="UTF-8">
 <title>Admin</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 body{margin:0;font-family:Arial;background:#0b1220;color:#fff;}
-.section{background:#111827;margin:10px;padding:10px;border-radius:10px;}
-input{width:100%;padding:8px;margin:5px 0;}
-button{width:100%;padding:8px;border:none;border-radius:6px;}
+
+.section{
+  background:#111827;
+  margin:10px;
+  padding:10px;
+  border-radius:10px;
+}
+
+input{
+  width:100%;
+  padding:8px;
+  margin:5px 0;
+  border:none;
+  border-radius:6px;
+}
+
+button{
+  width:100%;
+  padding:8px;
+  border:none;
+  border-radius:6px;
+  margin-top:5px;
+}
+
 .add{background:#22c55e;color:#fff;}
-#dropZone{border:2px dashed #38bdf8;padding:20px;text-align:center;border-radius:10px;cursor:pointer;}
-img{width:80px;margin-top:10px;}
+
+#dropZone{
+  border:2px dashed #38bdf8;
+  padding:20px;
+  text-align:center;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+img{
+  width:80px;
+  margin-top:10px;
+}
 </style>
 </head>
 
@@ -23,18 +56,19 @@ img{width:80px;margin-top:10px;}
 <input id="pname" placeholder="Name">
 <input id="pprice" placeholder="Price">
 
-<div id="dropZone">Drop Image
+<div id="dropZone">
+📤 Drop Image Here
 <input type="file" id="pimage" style="display:none;">
 </div>
 
 <img id="preview">
 
-<button class="add" onclick="addProduct()">Add</button>
+<button class="add" onclick="addProduct()">Add Product</button>
 </div>
 
 <script>
 
-const API = "https://YOUR-BACKEND.onrender.com";
+const API = "https://phone-store-backend-9w7p.onrender.com";
 
 const dropZone = document.getElementById("dropZone");
 const fileInput = document.getElementById("pimage");
@@ -55,16 +89,25 @@ function addProduct(){
 
 let file = fileInput.files[0];
 
+if(!file){
+alert("Select image");
+return;
+}
+
 let formData = new FormData();
-formData.append("name",pname.value);
-formData.append("price",pprice.value);
-formData.append("image",file);
+formData.append("name", pname.value);
+formData.append("price", pprice.value);
+formData.append("image", file);
 
 fetch(API+"/add-product",{
 method:"POST",
 body:formData
 })
-.then(()=>alert("Product Added"));
+.then(r=>r.json())
+.then(data=>{
+alert("Product Added");
+console.log(data);
+});
 
 }
 
