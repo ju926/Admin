@@ -13,7 +13,6 @@ background:#0b1220;
 color:#fff;
 }
 
-/* HEADER */
 header{
 background:linear-gradient(90deg,#1d4ed8,#ef4444);
 padding:15px;
@@ -39,7 +38,7 @@ border-radius:6px;
 outline:none;
 }
 
-/* BUTTON */
+/* BUTTONS */
 button{
 width:100%;
 padding:10px;
@@ -55,7 +54,30 @@ background:#22c55e;
 color:#fff;
 }
 
-/* PRODUCT LIST */
+/* IMAGE UPLOAD BUTTON */
+.upload-label{
+display:block;
+background:linear-gradient(90deg,#1d4ed8,#ef4444);
+color:white;
+padding:12px;
+border-radius:8px;
+text-align:center;
+cursor:pointer;
+margin-top:8px;
+font-weight:bold;
+}
+
+/* PREVIEW */
+#previewImg{
+width:100%;
+margin-top:10px;
+border-radius:8px;
+display:none;
+height:150px;
+object-fit:cover;
+}
+
+/* PRODUCTS LIST */
 .list{
 padding:10px;
 }
@@ -74,7 +96,6 @@ object-fit:cover;
 border-radius:8px;
 }
 
-/* ACTION BUTTONS */
 .edit{
 background:#1d4ed8;
 color:#fff;
@@ -91,12 +112,19 @@ color:#fff;
 
 <header>🛠️ Admin Dashboard</header>
 
-<!-- ADD PRODUCT -->
+<!-- ADD PRODUCT FORM -->
 <div class="form">
 
 <input id="name" placeholder="Product Name">
 <input id="price" placeholder="Price">
-<input id="image" placeholder="Image URL or Base64">
+
+<!-- IMAGE UPLOAD BUTTON -->
+<label class="upload-label">
+📤 Upload Product Image
+<input type="file" id="imageFile" accept="image/*" style="display:none;">
+</label>
+
+<img id="previewImg">
 
 <button class="add" onclick="addProduct()">Add Product</button>
 
@@ -109,40 +137,55 @@ color:#fff;
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
+let imageBase64 = "";
+
+/* IMAGE UPLOAD */
+document.getElementById("imageFile").addEventListener("change", function(){
+
+const file = this.files[0];
+
+const reader = new FileReader();
+
+reader.onload = function(e){
+
+imageBase64 = e.target.result;
+
+const img = document.getElementById("previewImg");
+img.src = imageBase64;
+img.style.display = "block";
+
+};
+
+reader.readAsDataURL(file);
+
+});
+
 /* LOAD PRODUCTS */
 function loadProducts(){
+
 fetch(API+"/products")
 .then(r=>r.json())
-.then(data=>{
-render(data);
-});
+.then(render);
+
 }
 
-/* RENDER */
+/* RENDER PRODUCTS */
 function render(products){
 
-let html = "";
-
-products.forEach(p=>{
-
-html += `
+list.innerHTML = products.map(p=>`
 <div class="card">
 
 <img src="${p.image}">
 
 <input id="name-${p.id}" value="${p.name}">
 <input id="price-${p.id}" value="${p.price}">
-<input id="image-${p.id}" value="${p.image}">
 
-<button class="edit" onclick="updateProduct(${p.id})">Update</button>
-<button class="delete" onclick="deleteProduct(${p.id})">Delete</button>
+<button class="edit" onclick="update(${p.id})">Update</button>
+<button class="delete" onclick="del(${p.id})">Delete</button>
 
 </div>
-`;
+`).join("");
 
-});
-
-list.innerHTML = html;
 }
 
 /* ADD PRODUCT */
@@ -154,18 +197,21 @@ headers:{"Content-Type":"application/json"},
 body: JSON.stringify({
 name:name.value,
 price:price.value,
-image:image.value
+image:imageBase64
 })
 })
 .then(()=>loadProducts());
 
 name.value="";
 price.value="";
-image.value="";
+imageBase64="";
+document.getElementById("imageFile").value="";
+document.getElementById("previewImg").style.display="none";
+
 }
 
 /* UPDATE PRODUCT */
-function updateProduct(id){
+function update(id){
 
 fetch(API+"/update-product/"+id,{
 method:"PUT",
@@ -173,7 +219,7 @@ headers:{"Content-Type":"application/json"},
 body: JSON.stringify({
 name:document.getElementById("name-"+id).value,
 price:document.getElementById("price-"+id).value,
-image:document.getElementById("image-"+id).value
+image:imageBase64 || undefined
 })
 })
 .then(()=>loadProducts());
@@ -181,7 +227,7 @@ image:document.getElementById("image-"+id).value
 }
 
 /* DELETE PRODUCT */
-function deleteProduct(id){
+function del(id){
 
 fetch(API+"/delete-product/"+id,{
 method:"DELETE"
@@ -196,4 +242,4 @@ loadProducts();
 </script>
 
 </body>
-</html>
+  </html>
