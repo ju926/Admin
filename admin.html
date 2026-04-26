@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Admin Dashboard</title>
+<title>Admin Panel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -13,6 +13,7 @@ background:#0b1220;
 color:#fff;
 }
 
+/* HEADER */
 header{
 background:linear-gradient(90deg,#1d4ed8,#ef4444);
 padding:15px;
@@ -21,59 +22,69 @@ font-size:20px;
 font-weight:bold;
 }
 
-/* PRODUCTS */
-.container{
-padding:10px;
+/* UPLOAD SECTION */
+.uploadBox{
+padding:15px;
+background:#111827;
+margin:10px;
+border-radius:10px;
 }
 
+input[type="file"]{
+width:100%;
+padding:10px;
+background:#fff;
+color:#000;
+border-radius:8px;
+}
+
+/* GRID */
+.grid{
+display:grid;
+grid-template-columns:repeat(2,1fr);
+gap:10px;
+margin-top:15px;
+}
+
+/* CARD */
 .card{
-background:#111827;
-margin-bottom:10px;
+background:#1f2937;
 padding:10px;
 border-radius:10px;
-display:flex;
-gap:10px;
 }
 
 .card img{
-width:80px;
-height:80px;
+width:100%;
+height:120px;
 object-fit:cover;
 border-radius:8px;
 }
 
-.info{
-flex:1;
-}
-
-input{
+.card input{
 width:100%;
-padding:5px;
 margin-top:5px;
+padding:6px;
 border:none;
 border-radius:5px;
 }
 
+/* BUTTON */
 button{
-margin-top:5px;
-padding:6px 10px;
+width:100%;
+margin-top:10px;
+padding:10px;
 border:none;
-border-radius:6px;
+border-radius:8px;
 cursor:pointer;
 font-weight:bold;
 }
 
-.edit{
-background:#1d4ed8;
-color:#fff;
-}
-
-.save{
+.uploadBtn{
 background:#22c55e;
 color:#fff;
 }
 
-.delete{
+.removeBtn{
 background:#ef4444;
 color:#fff;
 }
@@ -82,9 +93,20 @@ color:#fff;
 
 <body>
 
-<header>🛠️ Admin Dashboard</header>
+<header>🛠️ Admin Product Upload</header>
 
-<div class="container" id="list"></div>
+<div class="uploadBox">
+
+<!-- FILE INPUT (THIS WAS MISSING BEFORE) -->
+<input type="file" id="images" multiple accept="image/*">
+
+<!-- PREVIEW AREA -->
+<div class="grid" id="preview"></div>
+
+<!-- UPLOAD BUTTON -->
+<button class="uploadBtn" onclick="uploadAll()">Upload All Products</button>
+
+</div>
 
 <script>
 
@@ -92,84 +114,106 @@ const API = "https://phone-store-backend-9w7p.onrender.com";
 
 let products = [];
 
-/* LOAD PRODUCTS */
-function load(){
+const imagesInput = document.getElementById("images");
+const preview = document.getElementById("preview");
 
-fetch(API+"/products")
-.then(r=>r.json())
-.then(data=>{
-products = data;
-render();
+/* SELECT IMAGES */
+imagesInput.addEventListener("change", function () {
+
+products = [];
+preview.innerHTML = "";
+
+Array.from(this.files).forEach((file, index) => {
+
+const reader = new FileReader();
+
+reader.onload = function (e) {
+
+products.push({
+image: e.target.result,
+name: "",
+price: ""
 });
 
-}
+/* CREATE CARD */
+const card = document.createElement("div");
+card.className = "card";
 
-/* RENDER */
-function render(){
+card.innerHTML = `
+<img src="${e.target.result}">
 
-let html = "";
+<input placeholder="Product Name" oninput="products[${index}].name=this.value">
+<input placeholder="Price" type="number" oninput="products[${index}].price=this.value">
 
-products.forEach((p,index)=>{
-
-html += `
-<div class="card">
-
-<img src="${p.image}">
-
-<div class="info">
-
-<input id="name-${p.id}" value="${p.name}">
-<input id="price-${p.id}" value="${p.price}">
-<input id="image-${p.id}" value="${p.image}">
-
-<button class="save" onclick="save('${p.id}')">Save</button>
-<button class="delete" onclick="remove('${p.id}')">Delete</button>
-
-</div>
-
-</div>
+<button class="removeBtn" onclick="removeItem(${index})">Remove</button>
 `;
 
+preview.appendChild(card);
+
+};
+
+reader.readAsDataURL(file);
+
 });
 
-list.innerHTML = html;
+});
+
+/* REMOVE ITEM */
+function removeItem(index){
+
+products.splice(index,1);
+preview.innerHTML = "";
+
+/* re-render */
+products.forEach((p,i)=>{
+
+const card = document.createElement("div");
+card.className = "card";
+
+card.innerHTML = `
+<img src="${p.image}">
+
+<input placeholder="Product Name" oninput="products[${i}].name=this.value">
+<input placeholder="Price" type="number" oninput="products[${i}].price=this.value">
+
+<button class="removeBtn" onclick="removeItem(${i})">Remove</button>
+`;
+
+preview.appendChild(card);
+
+});
+
 }
 
-/* SAVE EDIT */
-function save(id){
+/* UPLOAD ALL PRODUCTS */
+function uploadAll(){
 
-fetch(API+"/update-product/"+id,{
-method:"PUT",
-headers:{"Content-Type":"application/json"},
+if(products.length === 0){
+alert("No products selected");
+return;
+}
+
+products.forEach(p => {
+
+fetch(API+"/add-product", {
+method: "POST",
+headers: {"Content-Type":"application/json"},
 body: JSON.stringify({
-name: document.getElementById("name-"+id).value,
-price: document.getElementById("price-"+id).value,
-image: document.getElementById("image-"+id).value
+name: p.name,
+price: p.price,
+image: p.image
 })
-})
-.then(r=>r.json())
-.then(()=>{
-alert("Updated ✔");
-load();
 });
 
-}
-
-/* DELETE */
-function remove(id){
-
-fetch(API+"/delete-product/"+id,{
-method:"DELETE"
-})
-.then(()=>{
-alert("Deleted ❌");
-load();
 });
 
-}
+alert("Products uploaded successfully 🚀");
 
-/* INIT */
-load();
+products = [];
+preview.innerHTML = "";
+imagesInput.value = "";
+
+}
 
 </script>
 
