@@ -2,54 +2,80 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Admin</title>
+<title>Admin Panel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{margin:0;font-family:Arial;background:#0b1220;color:#fff;}
+body{
+margin:0;
+font-family:Arial;
+background:#0b1220;
+color:#fff;
+}
+
+header{
+background:#111827;
+padding:15px;
+text-align:center;
+color:#38bdf8;
+}
 
 .section{
-  background:#111827;
-  margin:10px;
-  padding:10px;
-  border-radius:10px;
+background:#111827;
+margin:10px;
+padding:10px;
+border-radius:10px;
 }
 
 input{
-  width:100%;
-  padding:8px;
-  margin:5px 0;
-  border:none;
-  border-radius:6px;
+width:100%;
+padding:8px;
+margin:5px 0;
+border:none;
+border-radius:6px;
 }
 
 button{
-  width:100%;
-  padding:8px;
-  border:none;
-  border-radius:6px;
-  margin-top:5px;
+width:100%;
+padding:8px;
+border:none;
+border-radius:6px;
+margin-top:5px;
+cursor:pointer;
 }
 
 .add{background:#22c55e;color:#fff;}
+.delete{background:#ef4444;color:#fff;}
+.edit{background:#3b82f6;color:#fff;}
 
 #dropZone{
-  border:2px dashed #38bdf8;
-  padding:20px;
-  text-align:center;
-  border-radius:10px;
-  cursor:pointer;
+border:2px dashed #38bdf8;
+padding:20px;
+text-align:center;
+border-radius:10px;
+cursor:pointer;
 }
 
 img{
-  width:80px;
-  margin-top:10px;
+width:80px;
+margin-top:10px;
+border-radius:6px;
+}
+
+.card{
+background:#0f172a;
+padding:10px;
+margin-top:10px;
+border-radius:10px;
 }
 </style>
 </head>
 
 <body>
 
+<header>⚙ Admin Dashboard</header>
+
+<!-- ADD PRODUCT -->
 <div class="section">
 <h3>Add Product</h3>
 
@@ -66,10 +92,23 @@ img{
 <button class="add" onclick="addProduct()">Add Product</button>
 </div>
 
+<!-- PRODUCTS -->
+<div class="section">
+<h3>Products</h3>
+<div id="productList"></div>
+</div>
+
+<!-- ORDERS -->
+<div class="section">
+<h3>Orders</h3>
+<div id="orders"></div>
+</div>
+
 <script>
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
+/* IMAGE PREVIEW */
 const dropZone = document.getElementById("dropZone");
 const fileInput = document.getElementById("pimage");
 const preview = document.getElementById("preview");
@@ -85,14 +124,10 @@ preview.src = e.target.result;
 reader.readAsDataURL(file);
 };
 
+/* ADD PRODUCT */
 function addProduct(){
 
 let file = fileInput.files[0];
-
-if(!file){
-alert("Select image");
-return;
-}
 
 let formData = new FormData();
 formData.append("name", pname.value);
@@ -105,11 +140,95 @@ body:formData
 })
 .then(r=>r.json())
 .then(data=>{
-alert("Product Added");
-console.log(data);
+alert("Product added");
+loadProducts();
 });
 
 }
+
+/* LOAD PRODUCTS */
+function loadProducts(){
+
+fetch(API+"/products")
+.then(r=>r.json())
+.then(data=>{
+
+let html="";
+
+data.forEach(p=>{
+html+=`
+<div class="card">
+<img src="${p.image}">
+<h4>${p.name}</h4>
+<p>${p.price} KES</p>
+
+<button class="edit" onclick="editProduct(${p.id})">Edit</button>
+<button class="delete" onclick="deleteProduct(${p.id})">Delete</button>
+
+</div>
+`;
+});
+
+productList.innerHTML = html;
+
+});
+
+}
+
+/* DELETE */
+function deleteProduct(id){
+
+fetch(API+"/delete-product",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id})
+})
+.then(()=>loadProducts());
+
+}
+
+/* EDIT */
+function editProduct(id){
+
+let name = prompt("New name:");
+let price = prompt("New price:");
+
+fetch(API+"/edit-product",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({id,name,price})
+})
+.then(()=>loadProducts());
+
+}
+
+/* ORDERS */
+function loadOrders(){
+
+fetch(API+"/orders")
+.then(r=>r.json())
+.then(data=>{
+
+let html="";
+
+data.forEach(o=>{
+html+=`
+<div class="card">
+<h4>${o.name}</h4>
+<p>${o.phone}</p>
+<p>${o.status}</p>
+</div>
+`;
+});
+
+orders.innerHTML = html;
+
+});
+
+}
+
+loadProducts();
+loadOrders();
 
 </script>
 
