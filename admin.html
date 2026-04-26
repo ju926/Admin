@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Admin Panel</title>
+<title>Admin Upload</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -11,224 +11,166 @@ margin:0;
 font-family:Arial;
 background:#0b1220;
 color:#fff;
+padding:10px;
 }
 
 header{
-background:#111827;
+background:linear-gradient(90deg,#1d4ed8,#ef4444);
 padding:15px;
 text-align:center;
-color:#38bdf8;
+font-size:20px;
+font-weight:bold;
+border-radius:10px;
 }
 
-.section{
+/* UPLOAD BOX */
+.uploadBox{
+margin-top:15px;
 background:#111827;
-margin:10px;
+padding:15px;
+border-radius:10px;
+}
+
+input[type="file"]{
+width:100%;
+padding:10px;
+}
+
+/* GRID */
+.grid{
+display:grid;
+grid-template-columns:repeat(2,1fr);
+gap:10px;
+margin-top:15px;
+}
+
+/* CARD */
+.card{
+background:#111827;
 padding:10px;
 border-radius:10px;
 }
 
-input{
+.card img{
 width:100%;
-padding:8px;
-margin:5px 0;
+height:120px;
+object-fit:cover;
+border-radius:8px;
+}
+
+.card input{
+width:100%;
+margin-top:5px;
+padding:6px;
 border:none;
-border-radius:6px;
+border-radius:5px;
 }
 
 button{
 width:100%;
-padding:8px;
-border:none;
-border-radius:6px;
-margin-top:5px;
-cursor:pointer;
-}
-
-.add{background:#22c55e;color:#fff;}
-.delete{background:#ef4444;color:#fff;}
-.edit{background:#3b82f6;color:#fff;}
-
-#dropZone{
-border:2px dashed #38bdf8;
-padding:20px;
-text-align:center;
-border-radius:10px;
-cursor:pointer;
-}
-
-img{
-width:80px;
 margin-top:10px;
-border-radius:6px;
-}
-
-.card{
-background:#0f172a;
 padding:10px;
-margin-top:10px;
-border-radius:10px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+}
+
+.uploadBtn{
+background:#22c55e;
+color:#fff;
+}
+
+.removeBtn{
+background:#ef4444;
+color:#fff;
 }
 </style>
 </head>
 
 <body>
 
-<header>⚙ Admin Dashboard</header>
+<header>📦 Admin Multi Upload</header>
 
-<!-- ADD PRODUCT -->
-<div class="section">
-<h3>Add Product</h3>
+<div class="uploadBox">
 
-<input id="pname" placeholder="Name">
-<input id="pprice" placeholder="Price">
+<input type="file" id="images" multiple accept="image/*">
 
-<div id="dropZone">
-📤 Drop Image Here
-<input type="file" id="pimage" style="display:none;">
-</div>
+<div class="grid" id="preview"></div>
 
-<img id="preview">
+<button class="uploadBtn" onclick="uploadAll()">Upload All Products</button>
 
-<button class="add" onclick="addProduct()">Add Product</button>
-</div>
-
-<!-- PRODUCTS -->
-<div class="section">
-<h3>Products</h3>
-<div id="productList"></div>
-</div>
-
-<!-- ORDERS -->
-<div class="section">
-<h3>Orders</h3>
-<div id="orders"></div>
 </div>
 
 <script>
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
-/* IMAGE PREVIEW */
-const dropZone = document.getElementById("dropZone");
-const fileInput = document.getElementById("pimage");
-const preview = document.getElementById("preview");
+let products = [];
 
-dropZone.onclick = ()=>fileInput.click();
+/* SELECT IMAGES */
+images.onchange = function(){
 
-fileInput.onchange = ()=>{
-let file = fileInput.files[0];
+preview.innerHTML = "";
+products = [];
+
+Array.from(this.files).forEach((file, index)=>{
+
 let reader = new FileReader();
-reader.onload = e=>{
-preview.src = e.target.result;
-}
-reader.readAsDataURL(file);
+
+reader.onload = function(e){
+
+let product = {
+image: e.target.result,
+name: "",
+price: ""
 };
 
-/* ADD PRODUCT */
-function addProduct(){
+products.push(product);
 
-let file = fileInput.files[0];
+preview.innerHTML += `
+<div class="card">
 
-let formData = new FormData();
-formData.append("name", pname.value);
-formData.append("price", pprice.value);
-formData.append("image", file);
+<img src="${e.target.result}">
+
+<input placeholder="Product Name" oninput="products[${index}].name=this.value">
+<input placeholder="Price" type="number" oninput="products[${index}].price=this.value">
+
+</div>
+`;
+
+};
+
+reader.readAsDataURL(file);
+
+});
+
+};
+
+/* UPLOAD ALL */
+function uploadAll(){
+
+products.forEach(p=>{
 
 fetch(API+"/add-product",{
 method:"POST",
-body:formData
-})
-.then(r=>r.json())
-.then(data=>{
-alert("Product added");
-loadProducts();
-});
-
-}
-
-/* LOAD PRODUCTS */
-function loadProducts(){
-
-fetch(API+"/products")
-.then(r=>r.json())
-.then(data=>{
-
-let html="";
-
-data.forEach(p=>{
-html+=`
-<div class="card">
-<img src="${p.image}">
-<h4>${p.name}</h4>
-<p>${p.price} KES</p>
-
-<button class="edit" onclick="editProduct(${p.id})">Edit</button>
-<button class="delete" onclick="deleteProduct(${p.id})">Delete</button>
-
-</div>
-`;
-});
-
-productList.innerHTML = html;
-
-});
-
-}
-
-/* DELETE */
-function deleteProduct(id){
-
-fetch(API+"/delete-product",{
-method:"POST",
 headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id})
+body: JSON.stringify({
+name: p.name,
+price: p.price,
+image: p.image
 })
-.then(()=>loadProducts());
-
-}
-
-/* EDIT */
-function editProduct(id){
-
-let name = prompt("New name:");
-let price = prompt("New price:");
-
-fetch(API+"/edit-product",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({id,name,price})
-})
-.then(()=>loadProducts());
-
-}
-
-/* ORDERS */
-function loadOrders(){
-
-fetch(API+"/orders")
-.then(r=>r.json())
-.then(data=>{
-
-let html="";
-
-data.forEach(o=>{
-html+=`
-<div class="card">
-<h4>${o.name}</h4>
-<p>${o.phone}</p>
-<p>${o.status}</p>
-</div>
-`;
 });
-
-orders.innerHTML = html;
 
 });
 
-}
+alert("Products uploaded successfully 🚀");
 
-loadProducts();
-loadOrders();
+images.value = "";
+preview.innerHTML = "";
+products = [];
+
+}
 
 </script>
 
