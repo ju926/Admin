@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Admin Upload</title>
+<title>Admin Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -11,7 +11,6 @@ margin:0;
 font-family:Arial;
 background:#0b1220;
 color:#fff;
-padding:10px;
 }
 
 header{
@@ -20,68 +19,61 @@ padding:15px;
 text-align:center;
 font-size:20px;
 font-weight:bold;
-border-radius:10px;
 }
 
-/* UPLOAD BOX */
-.uploadBox{
-margin-top:15px;
-background:#111827;
-padding:15px;
-border-radius:10px;
-}
-
-input[type="file"]{
-width:100%;
+/* PRODUCTS */
+.container{
 padding:10px;
 }
 
-/* GRID */
-.grid{
-display:grid;
-grid-template-columns:repeat(2,1fr);
-gap:10px;
-margin-top:15px;
-}
-
-/* CARD */
 .card{
 background:#111827;
+margin-bottom:10px;
 padding:10px;
 border-radius:10px;
+display:flex;
+gap:10px;
 }
 
 .card img{
-width:100%;
-height:120px;
+width:80px;
+height:80px;
 object-fit:cover;
 border-radius:8px;
 }
 
-.card input{
+.info{
+flex:1;
+}
+
+input{
 width:100%;
+padding:5px;
 margin-top:5px;
-padding:6px;
 border:none;
 border-radius:5px;
 }
 
 button{
-width:100%;
-margin-top:10px;
-padding:10px;
+margin-top:5px;
+padding:6px 10px;
 border:none;
-border-radius:8px;
+border-radius:6px;
 cursor:pointer;
 font-weight:bold;
 }
 
-.uploadBtn{
+.edit{
+background:#1d4ed8;
+color:#fff;
+}
+
+.save{
 background:#22c55e;
 color:#fff;
 }
 
-.removeBtn{
+.delete{
 background:#ef4444;
 color:#fff;
 }
@@ -90,17 +82,9 @@ color:#fff;
 
 <body>
 
-<header>📦 Admin Multi Upload</header>
+<header>🛠️ Admin Dashboard</header>
 
-<div class="uploadBox">
-
-<input type="file" id="images" multiple accept="image/*">
-
-<div class="grid" id="preview"></div>
-
-<button class="uploadBtn" onclick="uploadAll()">Upload All Products</button>
-
-</div>
+<div class="container" id="list"></div>
 
 <script>
 
@@ -108,69 +92,84 @@ const API = "https://phone-store-backend-9w7p.onrender.com";
 
 let products = [];
 
-/* SELECT IMAGES */
-images.onchange = function(){
+/* LOAD PRODUCTS */
+function load(){
 
-preview.innerHTML = "";
-products = [];
+fetch(API+"/products")
+.then(r=>r.json())
+.then(data=>{
+products = data;
+render();
+});
 
-Array.from(this.files).forEach((file, index)=>{
+}
 
-let reader = new FileReader();
+/* RENDER */
+function render(){
 
-reader.onload = function(e){
+let html = "";
 
-let product = {
-image: e.target.result,
-name: "",
-price: ""
-};
+products.forEach((p,index)=>{
 
-products.push(product);
-
-preview.innerHTML += `
+html += `
 <div class="card">
 
-<img src="${e.target.result}">
+<img src="${p.image}">
 
-<input placeholder="Product Name" oninput="products[${index}].name=this.value">
-<input placeholder="Price" type="number" oninput="products[${index}].price=this.value">
+<div class="info">
+
+<input id="name-${p.id}" value="${p.name}">
+<input id="price-${p.id}" value="${p.price}">
+<input id="image-${p.id}" value="${p.image}">
+
+<button class="save" onclick="save('${p.id}')">Save</button>
+<button class="delete" onclick="remove('${p.id}')">Delete</button>
+
+</div>
 
 </div>
 `;
 
-};
-
-reader.readAsDataURL(file);
-
 });
 
-};
+list.innerHTML = html;
+}
 
-/* UPLOAD ALL */
-function uploadAll(){
+/* SAVE EDIT */
+function save(id){
 
-products.forEach(p=>{
-
-fetch(API+"/add-product",{
-method:"POST",
+fetch(API+"/update-product/"+id,{
+method:"PUT",
 headers:{"Content-Type":"application/json"},
 body: JSON.stringify({
-name: p.name,
-price: p.price,
-image: p.image
+name: document.getElementById("name-"+id).value,
+price: document.getElementById("price-"+id).value,
+image: document.getElementById("image-"+id).value
 })
+})
+.then(r=>r.json())
+.then(()=>{
+alert("Updated ✔");
+load();
 });
-
-});
-
-alert("Products uploaded successfully 🚀");
-
-images.value = "";
-preview.innerHTML = "";
-products = [];
 
 }
+
+/* DELETE */
+function remove(id){
+
+fetch(API+"/delete-product/"+id,{
+method:"DELETE"
+})
+.then(()=>{
+alert("Deleted ❌");
+load();
+});
+
+}
+
+/* INIT */
+load();
 
 </script>
 
