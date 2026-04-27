@@ -4,92 +4,31 @@
 <title>Admin Panel</title>
 
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:#0b1220;
-color:white;
-}
+body{margin:0;font-family:Arial;background:#0b1220;color:white}
+.container{max-width:600px;margin:auto;padding:15px}
+input{width:100%;padding:10px;margin:8px 0}
+button{padding:10px;border:none;border-radius:8px;cursor:pointer}
+.add{background:#22c55e;width:100%}
 
-.container{
-max-width:600px;
-margin:auto;
-padding:15px;
-}
+.card{background:#111827;padding:10px;margin-top:10px;border-radius:10px;display:flex;gap:10px}
+img{width:60px;height:60px;object-fit:cover;border-radius:8px}
 
-input{
-width:100%;
-padding:10px;
-margin:8px 0;
-border:none;
-border-radius:8px;
-background:#111827;
-color:white;
-}
-
-button{
-padding:10px;
-border:none;
-border-radius:8px;
-cursor:pointer;
-font-weight:bold;
-}
-
-/* ADD */
-.addBtn{
-width:100%;
-background:#22c55e;
-color:white;
-}
-
-/* CARDS */
-.card{
-background:#111827;
-padding:10px;
-margin-top:10px;
-border-radius:10px;
-display:flex;
-gap:10px;
-align-items:center;
-}
-
-.card img{
-width:60px;
-height:60px;
-object-fit:cover;
-border-radius:8px;
-}
-
-/* ACTION BUTTONS */
-.editBtn{
-background:#2563eb;
-color:white;
-margin-right:5px;
-}
-
-.delBtn{
-background:#ef4444;
-color:white;
-}
-
-.actions{
-margin-left:auto;
-}
+.edit{background:#2563eb;color:white}
+.del{background:#ef4444;color:white}
 </style>
 
 </head>
-
 <body>
 
 <div class="container">
 
-<h2>Admin Panel</h2>
+<h2>Admin Products</h2>
 
-<input id="name" placeholder="Product Name">
+<input id="name" placeholder="Name">
 <input id="price" placeholder="Price">
 <input type="file" id="image">
 
-<button class="addBtn" onclick="add()">Add Product</button>
+<button class="add" onclick="add()">Add Product</button>
 
 <div id="list"></div>
 
@@ -97,97 +36,51 @@ margin-left:auto;
 
 <script>
 
-const API = "https://phone-store-backend-9w7p.onrender.com";
+const API="https://phone-store-backend-9w7p.onrender.com";
 
-/* LOAD PRODUCTS */
 function load(){
-
 fetch(API+"/products")
-.then(res=>res.json())
+.then(r=>r.json())
 .then(data=>{
-
 document.getElementById("list").innerHTML =
 data.map(p=>`
-
 <div class="card">
 <img src="${API}/uploads/${p.image}">
-
 <div>
-<b>${p.name}</b><br>
-KES ${p.price}
+<b>${p.name}</b><br>KES ${p.price}
 </div>
 
-<div class="actions">
-<button class="editBtn" onclick="editProduct('${p._id}','${p.price}')">Edit</button>
-<button class="delBtn" onclick="deleteProduct('${p._id}')">Delete</button>
+<button class="edit" onclick="edit('${p._id}','${p.price}')">Edit</button>
+<button class="del" onclick="del('${p._id}')">Delete</button>
 </div>
-
-</div>
-
 `).join("");
-
 });
-
 }
 
 load();
 
-/* ADD PRODUCT */
-async function add(){
+function add(){
+let f=new FormData();
+f.append("name",name.value);
+f.append("price",price.value);
+f.append("image",image.files[0]);
 
-let name = document.getElementById("name").value;
-let price = document.getElementById("price").value;
-let file = document.getElementById("image").files[0];
-
-if(!name || !price || !file){
-alert("Fill all fields");
-return;
-}
-
-let form = new FormData();
-form.append("name",name);
-form.append("price",price);
-form.append("image",file);
-
-await fetch(API+"/add-product-upload",{
-method:"POST",
-body:form
-});
-
-load();
-
-}
-
-/* DELETE PRODUCT */
-function deleteProduct(id){
-
-if(!confirm("Delete this product?")) return;
-
-fetch(API+"/delete-product/"+id,{
-method:"DELETE"
-})
+fetch(API+"/add-product-upload",{method:"POST",body:f})
 .then(()=>load());
-
 }
 
-/* EDIT PRICE */
-function editProduct(id, oldPrice){
+function del(id){
+fetch(API+"/delete-product/"+id,{method:"DELETE"})
+.then(()=>load());
+}
 
-let newPrice = prompt("Enter new price", oldPrice);
-
-if(!newPrice) return;
-
+function edit(id,price){
+let p=prompt("New price",price);
 fetch(API+"/update-product/"+id,{
 method:"PUT",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-price:newPrice
-})
-})
-.then(()=>load());
-
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({price:p})
+}).then(()=>load());
 }
 
 </script>
