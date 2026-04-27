@@ -1,121 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Admin Orders</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Orders Dashboard</title>
 
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:#0b1220;
-color:white;
-}
+body{margin:0;font-family:Arial;background:#0b1220;color:white}
+.container{max-width:900px;margin:auto;padding:15px}
 
-/* HEADER */
-header{
-background:linear-gradient(90deg,#2563eb,#ef4444);
-padding:15px;
-text-align:center;
-font-weight:bold;
-}
+.card{background:#111827;padding:15px;margin-bottom:10px;border-radius:10px}
 
-/* CONTAINER */
-.container{
-max-width:900px;
-margin:auto;
-padding:15px;
-}
+button{padding:6px 10px;margin:3px;border:none;border-radius:6px;cursor:pointer}
 
-/* ORDER CARD */
-.card{
-background:#111827;
-padding:15px;
-border-radius:12px;
-margin-bottom:12px;
-box-shadow:0 10px 20px rgba(0,0,0,0.3);
-}
-
-/* TITLE */
-h3{
-margin:0;
-color:#22c55e;
-}
-
-/* INFO */
-p{
-margin:5px 0;
-font-size:14px;
-opacity:0.9;
-}
-
-/* ITEMS */
-.items{
-background:#0f172a;
-padding:10px;
-border-radius:10px;
-margin-top:10px;
-}
-
-/* BADGE */
-.badge{
-display:inline-block;
-padding:4px 8px;
-background:#2563eb;
-border-radius:8px;
-font-size:12px;
-margin-top:5px;
-}
+.pending{background:#facc15}
+.processing{background:#2563eb;color:white}
+.delivered{background:#22c55e;color:white}
 </style>
 
 </head>
 
 <body>
 
-<header>📦 Admin Order Dashboard</header>
-
-<div class="container" id="orders"></div>
+<div class="container">
+<h2>📦 Orders Dashboard</h2>
+<div id="orders"></div>
+</div>
 
 <script>
 
-const API = "https://phone-store-backend-9w7p.onrender.com";
+const API="https://phone-store-backend-9w7p.onrender.com";
 
-function loadOrders(){
+function load(){
 
 fetch(API+"/orders")
-.then(res=>res.json())
+.then(r=>r.json())
 .then(data=>{
 
 document.getElementById("orders").innerHTML =
 data.map(o=>`
-
 <div class="card">
 
 <h3>${o.fullName}</h3>
+<p>${o.phone}</p>
+<p>${o.location}</p>
+<p>Status: <b>${o.status}</b></p>
 
-<p>📞 ${o.phone}</p>
-<p>📍 ${o.location}</p>
-<p>📧 ${o.email}</p>
-
-<div class="items">
-<b>Items:</b>
 <ul>
 ${o.items.map(i=>`<li>${i.name} - KES ${i.price}</li>`).join("")}
 </ul>
+
+<button class="pending" onclick="update('${o._id}','Pending')">Pending</button>
+<button class="processing" onclick="update('${o._id}','Processing')">Processing</button>
+<button class="delivered" onclick="update('${o._id}','Delivered')">Delivered</button>
+
 </div>
-
-<span class="badge">Status: Pending</span>
-
-</div>
-
 `).join("");
 
 });
 
 }
 
-loadOrders();
+load();
+
+function update(id,status){
+
+fetch(API+"/update-order-status/"+id,{
+method:"PUT",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({status})
+})
+.then(()=>load());
+
+}
 
 </script>
 
