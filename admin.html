@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>Admin Portal</title>
+<title>Admin Panel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -10,233 +9,238 @@ body{
 margin:0;
 font-family:Arial;
 background:#0b1220;
-color:#fff;
+color:white;
 }
 
+/* HEADER */
 header{
-background:linear-gradient(90deg,#1d4ed8,#ef4444);
+background:linear-gradient(135deg,#2563eb,#38bdf8);
 padding:15px;
 text-align:center;
 font-size:20px;
 font-weight:bold;
 }
 
-.container{
-padding:12px;
-}
-
 /* FORM */
 .form{
-background:#111827;
-padding:12px;
-border-radius:10px;
+padding:15px;
 }
 
 input{
 width:100%;
-padding:10px;
-margin-top:8px;
+padding:12px;
+margin:8px 0;
 border:none;
-border-radius:6px;
+border-radius:10px;
+background:#111827;
+color:white;
 outline:none;
 }
 
-/* BUTTON */
 button{
 width:100%;
-padding:10px;
+padding:12px;
 margin-top:10px;
 border:none;
-border-radius:6px;
-cursor:pointer;
+border-radius:10px;
 font-weight:bold;
-}
-
-.add{background:#22c55e;color:#fff;}
-.update{background:#1d4ed8;color:#fff;}
-.delete{background:#ef4444;color:#fff;}
-
-/* UPLOAD */
-.upload{
-display:block;
-background:linear-gradient(90deg,#1d4ed8,#ef4444);
-padding:12px;
-text-align:center;
-border-radius:8px;
-margin-top:8px;
 cursor:pointer;
-font-weight:bold;
 }
 
-#preview{
-width:100%;
-height:150px;
-object-fit:cover;
-margin-top:10px;
-border-radius:8px;
-display:none;
+/* BUTTONS */
+.add{
+background:#22c55e;
+color:white;
 }
 
-/* PRODUCTS */
+.update{
+background:#2563eb;
+color:white;
+}
+
+.delete{
+background:#ef4444;
+color:white;
+}
+
+/* PRODUCT LIST */
+.list{
+padding:10px;
+}
+
 .card{
 background:#111827;
-margin-top:12px;
 padding:10px;
-border-radius:10px;
+margin:10px 0;
+border-radius:12px;
+display:flex;
+gap:10px;
+align-items:center;
 }
 
 .card img{
-width:100%;
-height:140px;
+width:60px;
+height:60px;
 object-fit:cover;
-border-radius:8px;
+border-radius:10px;
+}
+
+.actions{
+flex:1;
+}
+
+.small{
+font-size:12px;
+color:#9ca3af;
+}
+
+.btn-row{
+display:flex;
+gap:5px;
+margin-top:5px;
+}
+
+.btn-row button{
+flex:1;
+padding:8px;
+font-size:12px;
 }
 </style>
 </head>
 
 <body>
 
-<header>🛠️ Admin Portal</header>
-
-<div class="container">
+<header>⚙️ Admin Panel</header>
 
 <div class="form">
 
 <input id="name" placeholder="Product Name">
 <input id="price" placeholder="Price">
-
-<label class="upload">
-📤 Upload Image
-<input type="file" id="imageFile" accept="image/*" style="display:none;">
-</label>
-
-<img id="preview">
+<input id="image" placeholder="Image URL">
 
 <button class="add" onclick="addProduct()">Add Product</button>
 
 </div>
 
-<h3>Products</h3>
-<div id="list"></div>
-
-</div>
+<div class="list" id="list"></div>
 
 <script>
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
-let imageBase64 = "";
-
-/* IMAGE UPLOAD */
-document.getElementById("imageFile").addEventListener("change", function(){
-const file = this.files[0];
-if(!file) return;
-
-const reader = new FileReader();
-
-reader.onload = function(e){
-imageBase64 = e.target.result;
-
-const preview = document.getElementById("preview");
-preview.src = imageBase64;
-preview.style.display = "block";
-};
-
-reader.readAsDataURL(file);
-});
+let editId = null;
 
 /* LOAD PRODUCTS */
-async function loadProducts(){
-const res = await fetch(API+"/products");
-const data = await res.json();
+function load(){
+fetch(API + "/products")
+.then(res=>res.json())
+.then(data=>{
 render(data);
+});
 }
+
+load();
 
 /* RENDER */
 function render(products){
 
-const list = document.getElementById("list");
+let html = "";
 
-list.innerHTML = products.map(p=>`
+products.forEach(p=>{
+html += `
 <div class="card">
 
-<img src="${p.image || ''}">
+<img src="${p.image}">
 
-<input id="n${p.id}" value="${p.name}">
-<input id="p${p.id}" value="${p.price}">
+<div class="actions">
 
-<button class="update" onclick="update(${p.id})">Update</button>
-<button class="delete" onclick="del(${p.id})">Delete</button>
+<div><b>${p.name}</b></div>
+<div class="small">KES ${p.price}</div>
+
+<div class="btn-row">
+
+<button class="update" onclick="edit('${p._id}','${p.name}','${p.price}','${p.image}')">
+Edit
+</button>
+
+<button class="delete" onclick="removeProduct('${p._id}')">
+Delete
+</button>
 
 </div>
-`).join("");
 
+</div>
+
+</div>
+`;
+});
+
+document.getElementById("list").innerHTML = html;
 }
 
 /* ADD PRODUCT */
-async function addProduct(){
+function addProduct(){
 
-const name = document.getElementById("name").value.trim();
-const price = document.getElementById("price").value.trim();
+const name = document.getElementById("name").value;
+const price = document.getElementById("price").value;
+const image = document.getElementById("image").value;
 
-if(!name || !price || !imageBase64){
-alert("Fill all fields + upload image");
-return;
-}
-
-await fetch(API+"/add-product",{
+fetch(API + "/add-product",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
-body: JSON.stringify({
-name,
-price,
-image: imageBase64
+body:JSON.stringify({name,price,image})
 })
+.then(res=>res.json())
+.then(()=>{
+clear();
+load();
 });
 
-/* RESET */
-document.getElementById("name").value="";
-document.getElementById("price").value="";
-document.getElementById("imageFile").value="";
-document.getElementById("preview").style.display="none";
-imageBase64="";
+}
 
-loadProducts();
+/* EDIT */
+function edit(id,name,price,image){
+
+editId = id;
+
+document.getElementById("name").value = name;
+document.getElementById("price").value = price;
+document.getElementById("image").value = image;
 
 }
 
 /* UPDATE */
-async function update(id){
+function updateProduct(){
 
-const name = document.getElementById("n"+id).value.trim();
-const price = document.getElementById("p"+id).value.trim();
-
-await fetch(API+"/update-product/"+id,{
+fetch(API + "/update-product/" + editId,{
 method:"PUT",
 headers:{"Content-Type":"application/json"},
-body: JSON.stringify({
-name,
-price
+body:JSON.stringify({
+name:document.getElementById("name").value,
+price:document.getElementById("price").value,
+image:document.getElementById("image").value
 })
-});
-
-loadProducts();
+})
+.then(()=>load());
 
 }
 
 /* DELETE */
-async function del(id){
+function removeProduct(id){
 
-await fetch(API+"/delete-product/"+id,{
+fetch(API + "/delete-product/" + id,{
 method:"DELETE"
-});
-
-loadProducts();
+})
+.then(()=>load());
 
 }
 
-/* INIT */
-loadProducts();
+/* CLEAR */
+function clear(){
+document.getElementById("name").value="";
+document.getElementById("price").value="";
+document.getElementById("image").value="";
+}
 
 </script>
 
