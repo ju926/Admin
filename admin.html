@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Admin Upload</title>
+<title>Admin Panel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -12,13 +12,16 @@ background:#0b1220;
 color:white;
 }
 
+/* HEADER */
 header{
 background:linear-gradient(135deg,#2563eb,#38bdf8);
 padding:15px;
 text-align:center;
+font-size:20px;
 font-weight:bold;
 }
 
+/* FORM */
 .form{
 padding:15px;
 }
@@ -31,29 +34,48 @@ border:none;
 border-radius:10px;
 background:#111827;
 color:white;
+outline:none;
 }
 
 button{
 width:100%;
 padding:12px;
+margin-top:10px;
 border:none;
 border-radius:10px;
 font-weight:bold;
 cursor:pointer;
 }
 
+/* BUTTONS */
 .add{
 background:#22c55e;
 color:white;
 }
 
+.update{
+background:#2563eb;
+color:white;
+}
+
+.delete{
+background:#ef4444;
+color:white;
+}
+
+/* PRODUCT LIST */
+.list{
+padding:10px;
+}
+
 .card{
 background:#111827;
 padding:10px;
-margin:10px;
+margin:10px 0;
 border-radius:12px;
 display:flex;
 gap:10px;
+align-items:center;
 }
 
 .card img{
@@ -62,78 +84,170 @@ height:60px;
 object-fit:cover;
 border-radius:10px;
 }
+
+.small{
+font-size:12px;
+color:#9ca3af;
+}
+
+.actions{
+flex:1;
+}
+
+.btn-row{
+display:flex;
+gap:5px;
+margin-top:5px;
+}
+
+.btn-row button{
+flex:1;
+padding:8px;
+font-size:12px;
+}
 </style>
 </head>
 
 <body>
 
-<header>⚙️ Admin Upload Panel</header>
+<header>⚙️ Admin Panel</header>
 
 <div class="form">
 
 <input id="name" placeholder="Product Name">
 <input id="price" placeholder="Price">
 
-<!-- FILE UPLOAD (NEW) -->
+<!-- IMAGE UPLOAD -->
 <input type="file" id="imageFile">
 
-<button class="add" onclick="uploadProduct()">Upload Product</button>
+<button class="add" onclick="addProduct()">Add Product</button>
+
+<button class="update" onclick="updateProduct()">Update Selected</button>
 
 </div>
 
-<div id="list"></div>
+<div class="list" id="list"></div>
 
 <script>
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
+let editId = null;
+
 /* LOAD PRODUCTS */
 function load(){
 fetch(API + "/products")
 .then(res=>res.json())
-.then(data=>{
-document.getElementById("list").innerHTML =
-data.map(p=>`
-<div class="card">
-<img src="${p.image}">
-<div>
-<b>${p.name}</b><br>
-KES ${p.price}
-</div>
-</div>
-`).join('');
-});
+.then(data=>render(data));
 }
 
 load();
 
-/* UPLOAD PRODUCT */
-async function uploadProduct(){
+/* RENDER */
+function render(products){
 
-const name = document.getElementById("name").value;
-const price = document.getElementById("price").value;
-const file = document.getElementById("imageFile").files[0];
+document.getElementById("list").innerHTML =
+products.map(p=>{
+
+let img = p.image;
+if(img && !img.startsWith("http")){
+img = API + "/uploads/" + img;
+}
+
+return `
+<div class="card">
+
+<img src="${img}">
+
+<div class="actions">
+
+<b>${p.name}</b><br>
+<div class="small">KES ${p.price}</div>
+
+<div class="btn-row">
+
+<button class="update" onclick="edit('${p._id}','${p.name}','${p.price}')">
+Edit
+</button>
+
+<button class="delete" onclick="removeProduct('${p._id}')">
+Delete
+</button>
+
+</div>
+
+</div>
+
+</div>
+`;
+}).join("");
+
+}
+
+/* ADD PRODUCT (WITH IMAGE UPLOAD) */
+function addProduct(){
+
+let name = document.getElementById("name").value;
+let price = document.getElementById("price").value;
+let file = document.getElementById("imageFile").files[0];
 
 if(!file){
-alert("Select image first");
+alert("Select image");
 return;
 }
 
-/* SEND FILE TO BACKEND */
 let formData = new FormData();
-formData.append("image", file);
 formData.append("name", name);
 formData.append("price", price);
+formData.append("image", file);
 
-let res = await fetch(API + "/add-product-upload", {
-method: "POST",
-body: formData
-});
+fetch(API + "/add-product-upload",{
+method:"POST",
+body:formData
+})
+.then(()=>load());
 
-let data = await res.json();
+}
 
-alert("Uploaded ✔");
-load();
+/* EDIT */
+function edit(id,name,price){
+
+editId = id;
+
+document.getElementById("name").value = name;
+document.getElementById("price").value = price;
+
+}
+
+/* UPDATE (WITH OPTIONAL IMAGE REPLACE) */
+function updateProduct(){
+
+let formData = new FormData();
+
+formData.append("name", document.getElementById("name").value);
+formData.append("price", document.getElementById("price").value);
+
+let file = document.getElementById("imageFile").files[0];
+
+if(file){
+formData.append("image", file);
+}
+
+fetch(API + "/update-product-upload/" + editId,{
+method:"PUT",
+body:formData
+})
+.then(()=>load());
+
+}
+
+/* DELETE */
+function removeProduct(id){
+
+fetch(API + "/delete-product/" + id,{
+method:"DELETE"
+})
+.then(()=>load());
 
 }
 
