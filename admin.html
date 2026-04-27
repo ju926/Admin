@@ -2,106 +2,28 @@
 <html>
 <head>
 <title>Admin Panel</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:#0b1220;
-color:white;
-}
-
-/* HEADER */
-header{
-padding:15px;
-text-align:center;
-background:#111827;
-font-size:18px;
-font-weight:bold;
-}
-
-/* CONTAINER */
-.container{
-padding:15px;
-max-width:600px;
-margin:auto;
-}
-
-/* INPUTS */
-input{
-width:100%;
-padding:12px;
-margin:8px 0;
-border:none;
-border-radius:10px;
-background:#111827;
-color:white;
-outline:none;
-}
-
-/* BUTTON */
-button{
-width:100%;
-padding:12px;
-border:none;
-border-radius:10px;
-background:#2563eb;
-color:white;
-font-weight:bold;
-cursor:pointer;
-}
-
-button:active{
-transform:scale(0.98);
-}
-
-/* PREVIEW IMAGE */
-#preview{
-width:100px;
-height:100px;
-object-fit:cover;
-border-radius:10px;
-margin-top:10px;
-display:none;
-}
-
-/* PRODUCT LIST */
-.card{
-background:#111827;
-padding:10px;
-margin-top:10px;
-border-radius:10px;
-display:flex;
-gap:10px;
-align-items:center;
-}
-
-.card img{
-width:60px;
-height:60px;
-object-fit:cover;
-border-radius:8px;
-background:#0f172a;
-}
+body{font-family:Arial;background:#0b1220;color:white;margin:0}
+.container{padding:20px;max-width:600px;margin:auto}
+input{width:100%;padding:10px;margin:8px 0}
+button{width:100%;padding:12px;background:#2563eb;color:white;border:none}
+.card{background:#111827;padding:10px;margin:10px 0}
+img{width:60px;height:60px;object-fit:cover}
 </style>
-
 </head>
 
 <body>
 
-<header>🛠️ Admin Panel</header>
-
 <div class="container">
 
-<input id="name" placeholder="Product Name">
+<h2>Admin Upload</h2>
+
+<input id="name" placeholder="Name">
 <input id="price" placeholder="Price">
+<input type="file" id="image">
 
-<input type="file" id="imageFile">
-
-<img id="preview">
-
-<button onclick="add()">Add Product</button>
+<button onclick="upload()">Add Product</button>
 
 <div id="list"></div>
 
@@ -111,29 +33,35 @@ background:#0f172a;
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
-/* =========================
-   IMAGE PREVIEW (NEW FEATURE)
-========================= */
-document.getElementById("imageFile").addEventListener("change", function(e){
+/* UPLOAD */
+async function upload(){
 
-let file = e.target.files[0];
+const name = document.getElementById("name").value;
+const price = document.getElementById("price").value;
+const file = document.getElementById("image").files[0];
 
-if(file){
-let reader = new FileReader();
-
-reader.onload = function(){
-document.getElementById("preview").src = reader.result;
-document.getElementById("preview").style.display = "block";
+if(!name || !price || !file){
+alert("Fill all fields");
+return;
 }
 
-reader.readAsDataURL(file);
-}
+let form = new FormData();
+form.append("name", name);
+form.append("price", price);
+form.append("image", file);
 
+await fetch(API+"/add-product-upload",{
+method:"POST",
+body:form
 });
 
-/* =========================
-   LOAD PRODUCTS
-========================= */
+alert("Uploaded ✔");
+
+load();
+
+}
+
+/* LOAD */
 function load(){
 
 fetch(API+"/products")
@@ -141,77 +69,22 @@ fetch(API+"/products")
 .then(data=>{
 
 document.getElementById("list").innerHTML =
-data.map(p=>{
+data.map(p=>`
 
-let img = p.image;
-
-if(img && !img.startsWith("http")){
-img = API + "/uploads/" + img;
-}
-
-return `
 <div class="card">
-<img src="${img}">
+<img src="${API}/uploads/${p.image}">
 <div>
-<b>${p.name}</b><br>
-KES ${p.price}
+${p.name} - KES ${p.price}
 </div>
 </div>
-`;
-}).join("");
+
+`).join("");
 
 });
 
 }
 
 load();
-
-/* =========================
-   ADD PRODUCT (FIXED + SAFE)
-========================= */
-async function add(){
-
-try{
-
-let name = document.getElementById("name").value;
-let price = document.getElementById("price").value;
-let file = document.getElementById("imageFile").files[0];
-
-if(!name || !price || !file){
-alert("Fill all fields");
-return;
-}
-
-let formData = new FormData();
-formData.append("name", name);
-formData.append("price", price);
-formData.append("image", file);
-
-let btn = document.querySelector("button");
-btn.innerText = "Uploading...";
-btn.disabled = true;
-
-await fetch(API+"/add-product-upload",{
-method:"POST",
-body:formData
-});
-
-btn.innerText = "Add Product";
-btn.disabled = false;
-
-document.getElementById("name").value = "";
-document.getElementById("price").value = "";
-document.getElementById("imageFile").value = "";
-document.getElementById("preview").style.display = "none";
-
-load();
-
-}catch(err){
-console.log(err);
-alert("Upload failed");
-}
-
-}
 
 </script>
 
