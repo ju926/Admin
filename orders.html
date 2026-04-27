@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Orders</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+font-family:Arial;
+background:#0b1220;
+color:white;
+margin:0;
+}
+
+header{
+background:linear-gradient(135deg,#2563eb,#38bdf8);
+padding:15px;
+text-align:center;
+font-weight:bold;
+}
+
+.card{
+background:#111827;
+margin:10px;
+padding:10px;
+border-radius:12px;
+}
+</style>
+</head>
+
+<body>
+
+<header>📦 Orders Dashboard</header>
+
+<div id="orders"></div>
+
+<script>
+
+const API = "https://phone-store-backend-9w7p.onrender.com";
+
+fetch(API + "/orders")
+.then(res=>res.json())
+.then(data=>{
+
+document.getElementById("orders").innerHTML =
+data.map(o=>`
+<div class="card">
+<b>${o.name}</b><br>
+📞 ${o.phone}<br>
+💰 ${o.amount}<br>
+📍 ${o.location || "N/A"}
+</div>
+`).join("");
+
+});
+
+</script>
+
+</body>
+  </html>
