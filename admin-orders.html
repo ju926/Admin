@@ -1,20 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Orders</title>
+<title>Admin Orders</title>
+
 <style>
 body{margin:0;font-family:Arial;background:#0b1220;color:white}
 .card{background:#111827;margin:10px;padding:10px;border-radius:10px}
-button{margin:3px;padding:5px;border:none;border-radius:6px;cursor:pointer}
-.p{background:#facc15}
-.pr{background:#2563eb;color:white}
-.d{background:#22c55e;color:white}
+button{padding:5px;margin:3px;border:none;border-radius:6px;cursor:pointer}
 </style>
+
 </head>
 
 <body>
 
-<h2>Orders Dashboard</h2>
+<h2>📦 Orders Dashboard</h2>
 <div id="orders"></div>
 
 <script>
@@ -28,24 +27,21 @@ fetch(API+"/orders")
 .then(data=>{
 
 document.getElementById("orders").innerHTML =
-data.map(o=>`
+(data ?? []).map(o=>`
 
 <div class="card">
 
-<h3>${o.fullName ?? "No Name"}</h3>
-<p>${o.phone ?? ""}</p>
-<p>${o.location ?? ""}</p>
-<p>Status: <b>${o.status ?? "Pending"}</b></p>
+<h3>${o?.fullName ?? "No Name"}</h3>
+<p>${o?.phone ?? ""}</p>
+<p>${o?.location ?? ""}</p>
+
+<p>Status: <b>${o?.status ?? "Pending"}</b></p>
 
 <ul>
-${(o.items ?? []).map(i=>`
-<li>${i?.name ?? "Unknown"} - KES ${i?.price ?? 0}</li>
+${(o?.items ?? []).map(i=>`
+<li>${i?.name ?? "Item"} - KES ${i?.price ?? 0}</li>
 `).join("")}
 </ul>
-
-<button class="p" onclick="update('${o._id}','Pending')">Pending</button>
-<button class="pr" onclick="update('${o._id}','Processing')">Processing</button>
-<button class="d" onclick="update('${o._id}','Delivered')">Delivered</button>
 
 </div>
 
@@ -56,17 +52,6 @@ ${(o.items ?? []).map(i=>`
 }
 
 load();
-
-function update(id,status){
-
-fetch(API+"/update-order-status/"+id,{
-method:"PUT",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({status})
-})
-.then(()=>load());
-
-}
 
 </script>
 
