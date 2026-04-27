@@ -4,26 +4,92 @@
 <title>Admin Panel</title>
 
 <style>
-body{font-family:Arial;background:#0b1220;color:white;margin:0}
-.container{padding:20px;max-width:600px;margin:auto}
-input{width:100%;padding:10px;margin:8px 0}
-button{width:100%;padding:12px;background:#2563eb;color:white;border:none}
-.card{background:#111827;padding:10px;margin:10px 0}
-img{width:60px;height:60px;object-fit:cover}
+body{
+margin:0;
+font-family:Arial;
+background:#0b1220;
+color:white;
+}
+
+.container{
+max-width:600px;
+margin:auto;
+padding:15px;
+}
+
+input{
+width:100%;
+padding:10px;
+margin:8px 0;
+border:none;
+border-radius:8px;
+background:#111827;
+color:white;
+}
+
+button{
+padding:10px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+}
+
+/* ADD */
+.addBtn{
+width:100%;
+background:#22c55e;
+color:white;
+}
+
+/* CARDS */
+.card{
+background:#111827;
+padding:10px;
+margin-top:10px;
+border-radius:10px;
+display:flex;
+gap:10px;
+align-items:center;
+}
+
+.card img{
+width:60px;
+height:60px;
+object-fit:cover;
+border-radius:8px;
+}
+
+/* ACTION BUTTONS */
+.editBtn{
+background:#2563eb;
+color:white;
+margin-right:5px;
+}
+
+.delBtn{
+background:#ef4444;
+color:white;
+}
+
+.actions{
+margin-left:auto;
+}
 </style>
+
 </head>
 
 <body>
 
 <div class="container">
 
-<h2>Admin Upload</h2>
+<h2>Admin Panel</h2>
 
-<input id="name" placeholder="Name">
+<input id="name" placeholder="Product Name">
 <input id="price" placeholder="Price">
 <input type="file" id="image">
 
-<button onclick="upload()">Add Product</button>
+<button class="addBtn" onclick="add()">Add Product</button>
 
 <div id="list"></div>
 
@@ -33,35 +99,7 @@ img{width:60px;height:60px;object-fit:cover}
 
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
-/* UPLOAD */
-async function upload(){
-
-const name = document.getElementById("name").value;
-const price = document.getElementById("price").value;
-const file = document.getElementById("image").files[0];
-
-if(!name || !price || !file){
-alert("Fill all fields");
-return;
-}
-
-let form = new FormData();
-form.append("name", name);
-form.append("price", price);
-form.append("image", file);
-
-await fetch(API+"/add-product-upload",{
-method:"POST",
-body:form
-});
-
-alert("Uploaded ✔");
-
-load();
-
-}
-
-/* LOAD */
+/* LOAD PRODUCTS */
 function load(){
 
 fetch(API+"/products")
@@ -73,9 +111,17 @@ data.map(p=>`
 
 <div class="card">
 <img src="${API}/uploads/${p.image}">
+
 <div>
-${p.name} - KES ${p.price}
+<b>${p.name}</b><br>
+KES ${p.price}
 </div>
+
+<div class="actions">
+<button class="editBtn" onclick="editProduct('${p._id}','${p.price}')">Edit</button>
+<button class="delBtn" onclick="deleteProduct('${p._id}')">Delete</button>
+</div>
+
 </div>
 
 `).join("");
@@ -85,6 +131,64 @@ ${p.name} - KES ${p.price}
 }
 
 load();
+
+/* ADD PRODUCT */
+async function add(){
+
+let name = document.getElementById("name").value;
+let price = document.getElementById("price").value;
+let file = document.getElementById("image").files[0];
+
+if(!name || !price || !file){
+alert("Fill all fields");
+return;
+}
+
+let form = new FormData();
+form.append("name",name);
+form.append("price",price);
+form.append("image",file);
+
+await fetch(API+"/add-product-upload",{
+method:"POST",
+body:form
+});
+
+load();
+
+}
+
+/* DELETE PRODUCT */
+function deleteProduct(id){
+
+if(!confirm("Delete this product?")) return;
+
+fetch(API+"/delete-product/"+id,{
+method:"DELETE"
+})
+.then(()=>load());
+
+}
+
+/* EDIT PRICE */
+function editProduct(id, oldPrice){
+
+let newPrice = prompt("Enter new price", oldPrice);
+
+if(!newPrice) return;
+
+fetch(API+"/update-product/"+id,{
+method:"PUT",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+price:newPrice
+})
+})
+.then(()=>load());
+
+}
 
 </script>
 
