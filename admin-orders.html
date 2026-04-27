@@ -1,29 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Orders Dashboard</title>
-
+<title>Orders</title>
 <style>
 body{margin:0;font-family:Arial;background:#0b1220;color:white}
-.container{max-width:900px;margin:auto;padding:15px}
-
-.card{background:#111827;padding:15px;margin-bottom:10px;border-radius:10px}
-
-button{padding:6px 10px;margin:3px;border:none;border-radius:6px;cursor:pointer}
-
-.pending{background:#facc15}
-.processing{background:#2563eb;color:white}
-.delivered{background:#22c55e;color:white}
+.card{background:#111827;margin:10px;padding:10px;border-radius:10px}
+button{margin:3px;padding:5px;border:none;border-radius:6px;cursor:pointer}
+.p{background:#facc15}
+.pr{background:#2563eb;color:white}
+.d{background:#22c55e;color:white}
 </style>
-
 </head>
 
 <body>
 
-<div class="container">
-<h2>📦 Orders Dashboard</h2>
+<h2>Orders Dashboard</h2>
 <div id="orders"></div>
-</div>
 
 <script>
 
@@ -37,22 +29,26 @@ fetch(API+"/orders")
 
 document.getElementById("orders").innerHTML =
 data.map(o=>`
+
 <div class="card">
 
-<h3>${o.fullName}</h3>
-<p>${o.phone}</p>
-<p>${o.location}</p>
-<p>Status: <b>${o.status}</b></p>
+<h3>${o.fullName ?? "No Name"}</h3>
+<p>${o.phone ?? ""}</p>
+<p>${o.location ?? ""}</p>
+<p>Status: <b>${o.status ?? "Pending"}</b></p>
 
 <ul>
-${o.items.map(i=>`<li>${i.name} - KES ${i.price}</li>`).join("")}
+${(o.items ?? []).map(i=>`
+<li>${i?.name ?? "Unknown"} - KES ${i?.price ?? 0}</li>
+`).join("")}
 </ul>
 
-<button class="pending" onclick="update('${o._id}','Pending')">Pending</button>
-<button class="processing" onclick="update('${o._id}','Processing')">Processing</button>
-<button class="delivered" onclick="update('${o._id}','Delivered')">Delivered</button>
+<button class="p" onclick="update('${o._id}','Pending')">Pending</button>
+<button class="pr" onclick="update('${o._id}','Processing')">Processing</button>
+<button class="d" onclick="update('${o._id}','Delivered')">Delivered</button>
 
 </div>
+
 `).join("");
 
 });
