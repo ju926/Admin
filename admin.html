@@ -1,214 +1,235 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Admin Panel</title>
+require("dotenv").config();
 
-<style>
-body{margin:0;font-family:Arial;background:#0b1220;color:white}
-header{padding:15px;background:#2563eb;text-align:center;font-size:20px}
+const express = require("express");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const multer = require("multer");
+const nodemailer = require("nodemailer");
+const axios = require("axios");
 
-.container{padding:10px}
+/* ================= CLOUDINARY ================= */
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
-.card{
-background:#111827;
-padding:10px;
-margin:10px 0;
-border-radius:10px
-}
+const app = express();
 
-button{
-padding:6px;
-margin:4px;
-border:none;
-border-radius:6px;
-cursor:pointer
-}
+app.use(cors());
+app.use(express.json());
 
-.del{background:#ef4444;color:white}
-.edit{background:#f59e0b;color:white}
-.status{background:#22c55e;color:white}
+/* ================= DB ================= */
+mongoose.connect(process.env.MONGO_URI)
+.then(()=>console.log("MongoDB Connected ✔"))
+.catch(err=>console.log(err));
 
-input{
-padding:8px;
-margin:5px 0;
-width:100%;
-border:none;
-border-radius:8px
-}
-
-img{
-width:100%;
-height:120px;
-object-fit:contain;
-background:#000
-}
-</style>
-
-</head>
-
-<body>
-
-<header>🛠 Admin Dashboard</header>
-
-<div class="container">
-
-<h3>➕ Add Product</h3>
-
-<div class="card">
-
-<input id="pname" placeholder="Phone Name">
-<input id="pprice" type="number" placeholder="Price">
-<input type="file" id="pimage">
-
-<button onclick="uploadProduct()">Upload Product</button>
-
-</div>
-
-<h3>📦 Orders</h3>
-<div id="orders">Loading...</div>
-
-<h3>🛍 Products</h3>
-<div id="products">Loading...</div>
-
-</div>
-
-<script>
-
-const API = "https://phone-store-backend-9w7p.onrender.com";
-
-/* ================= UPLOAD PRODUCT ================= */
-function uploadProduct(){
-
-let name = document.getElementById("pname").value;
-let price = document.getElementById("pprice").value;
-let file = document.getElementById("pimage").files[0];
-
-if(!name || !price || !file){
-alert("Fill all fields");
-return;
-}
-
-let formData = new FormData();
-formData.append("name", name);
-formData.append("price", price);
-formData.append("image", file);
-
-fetch(API + "/products", {
-method:"POST",
-body:formData
-})
-.then(res=>res.json())
-.then(()=>{
-alert("Product uploaded ✔");
-loadProducts();
+/* ================= MODELS ================= */
+const Product = mongoose.model("Product",{
+name:String,
+price:Number,
+image:String
 });
 
-}
-
-/* ================= ORDERS ================= */
-function loadOrders(){
-
-fetch(API+"/orders")
-.then(r=>r.json())
-.then(data=>{
-
-document.getElementById("orders").innerHTML =
-(data||[]).map(o=>`
-
-<div class="card">
-
-<h3>${o.fullName || ""}</h3>
-<p>Status: ${o.status}</p>
-<p>Payment: ${o.paymentMethod || ""}</p>
-<p>Code: ${o.transactionCode || ""}</p>
-
-<button class="status" onclick="updateStatus('${o._id}','Processing')">Processing</button>
-<button class="status" onclick="updateStatus('${o._id}','Delivered')">Delivered</button>
-<button class="del" onclick="deleteOrder('${o._id}')">Delete</button>
-
-</div>
-
-`).join("");
-
+const Order = mongoose.model("Order",{
+fullName:String,
+phone:String,
+email:String,
+location:String,
+items:Array,
+total:Number,
+status:{type:String,default:"Pending"},
+paymentMethod:String,
+transactionCode:String,
+date:{type:Date,default:Date.now}
 });
 
+/* ================= EMAIL ================= */
+const transporter = nodemailer.createTransport({
+service:"gmail",
+auth:{
+user:process.env.GMAIL_USER,
+pass:process.env.GMAIL_PASS
 }
+});
 
-function updateStatus(id,status){
+/* ================= CLOUDINARY CONFIG ================= */
+cloudinary.config({
+cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+api_key: process.env.CLOUDINARY_API_KEY,
+api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-fetch(API+"/update-order-status/"+id,{
-method:"PUT",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({status})
-})
-.then(()=>loadOrders());
-
+const storage = new CloudinaryStorage({
+cloudinary: cloudinary,
+params: {
+folder: "phone-store",
+allowed_formats: ["jpg","jpeg","png","webp"]
 }
+});
 
-function deleteOrder(id){
+const upload = multer({ storage });
 
-fetch(API+"/order/"+id,{method:"DELETE"})
-.then(()=>loadOrders());
-
-}
+/* ================= TEST ================= */
+app.get("/ping",(req,res)=>{
+res.send("Server OK ✔");
+});
 
 /* ================= PRODUCTS ================= */
-function loadProducts(){
+app.get("/products", async (req,res)=>{
+res.json(await Product.find());
+});
 
-fetch(API+"/products")
-.then(r=>r.json())
-.then(data=>{
+/* ================= ADD PRODUCT (CLOUDINARY) ================= */
+app.post("/products", upload.single("image"), async (req,res)=>{
 
-document.getElementById("products").innerHTML =
-(data||[]).map(p=>`
+try{
 
-<div class="card">
+const product = new Product({
+name: req.body.name,
+price: req.body.price,
+image: req.file.path   // 🔥 Cloudinary URL
+});
 
-<!-- FIXED: Cloudinary-safe image -->
-<img src="${p.image}">
+await product.save();
 
-<h4>${p.name}</h4>
-<p>KES ${p.price}</p>
+res.json({message:"Product added ✔"});
 
-<input id="p${p._id}" placeholder="new price">
+}catch(err){
+console.log(err);
+res.status(500).json({error:"Upload failed"});
+}
 
-<button class="edit" onclick="updatePrice('${p._id}')">Update Price</button>
-<button class="del" onclick="deleteProduct('${p._id}')">Delete</button>
+});
 
-</div>
+/* ================= UPDATE PRODUCT ================= */
+app.put("/product/:id", async (req,res)=>{
+const p = await Product.findById(req.params.id);
+p.price = req.body.price;
+await p.save();
+res.json({message:"Updated ✔"});
+});
 
-`).join("");
+/* ================= DELETE PRODUCT ================= */
+app.delete("/product/:id", async (req,res)=>{
+await Product.findByIdAndDelete(req.params.id);
+res.json({message:"Deleted ✔"});
+});
 
+/* ================= ORDERS ================= */
+app.get("/orders", async (req,res)=>{
+res.json(await Order.find().sort({date:-1}));
+});
+
+app.post("/order", async (req,res)=>{
+const order = new Order(req.body);
+await order.save();
+
+await transporter.sendMail({
+from:"Store <"+process.env.GMAIL_USER+">",
+to:order.email,
+subject:"🧾 Order Received",
+html:`<h2>Order Received</h2><p>Total: KES ${order.total}</p>`
+});
+
+res.json({message:"Order placed ✔"});
+});
+
+/* ================= UPDATE ORDER STATUS ================= */
+app.put("/update-order-status/:id", async (req,res)=>{
+const order = await Order.findById(req.params.id);
+order.status = req.body.status;
+await order.save();
+
+await transporter.sendMail({
+from:"Store <"+process.env.GMAIL_USER+">",
+to:order.email,
+subject:"📦 Order Update",
+html:`<h2>Status: ${order.status}</h2>`
+});
+
+res.json({message:"Updated ✔"});
+});
+
+/* ================= PESAPAL PAYMENT ================= */
+app.post("/pesapal/pay", async (req,res)=>{
+
+try{
+
+console.log("PAYMENT REQUEST:", req.body);
+
+/* TOKEN */
+const tokenRes = await axios.post(
+"https://pay.pesapal.com/v3/api/Auth/RequestToken",
+{
+consumer_key: process.env.PESAPAL_CONSUMER_KEY,
+consumer_secret: process.env.PESAPAL_CONSUMER_SECRET
+}
+);
+
+const token = tokenRes.data.token;
+
+/* PAYMENT */
+const payment = {
+id: Date.now().toString(),
+currency: "KES",
+amount: Number(req.body.total),
+description: "Phone Store Purchase",
+callback_url: process.env.CALLBACK_URL,
+
+billing_address:{
+email_address: req.body.email,
+phone_number: req.body.phone,
+first_name: req.body.name
+}
+};
+
+const response = await axios.post(
+"https://pay.pesapal.com/v3/api/Transactions/SubmitOrderRequest",
+payment,
+{
+headers:{
+Authorization:`Bearer ${token}`,
+"Content-Type":"application/json"
+}
+}
+);
+
+/* REDIRECT FIX */
+const redirect =
+response.data?.redirect_url ||
+response.data?.data?.redirect_url ||
+response.data?.payment_url ||
+null;
+
+if(!redirect){
+return res.json({
+error:"No redirect URL from Pesapal",
+raw: response.data
+});
+}
+
+res.json({ redirect_url: redirect });
+
+}catch(err){
+
+console.log("ERROR:", err.response?.data || err.message);
+
+res.status(500).json({
+error:"Payment failed",
+details: err.response?.data || err.message
 });
 
 }
 
-function updatePrice(id){
+});
 
-let price = document.getElementById("p"+id).value;
+/* ================= CALLBACK ================= */
+app.get("/callback",(req,res)=>{
+console.log("CALLBACK:", req.query);
+res.send("Payment received ✔");
+});
 
-fetch(API+"/product/"+id,{
-method:"PUT",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({price})
-})
-.then(()=>loadProducts());
+/* ================= SERVER ================= */
+const PORT = process.env.PORT || 10000;
 
-}
-
-function deleteProduct(id){
-
-fetch(API+"/product/"+id,{method:"DELETE"})
-.then(()=>loadProducts());
-
-}
-
-/* ================= INIT ================= */
-loadOrders();
-loadProducts();
-
-</script>
-
-</body>
-</html>
+app.listen(PORT,()=>{
+console.log("Server running on port " + PORT);
+});
