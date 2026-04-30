@@ -5,29 +5,16 @@
 <title>Admin Panel</title>
 
 <style>
-body{
-margin:0;
-font-family:Arial;
-background:#0b1220;
-color:white;
-}
+body{margin:0;font-family:Arial;background:#0b1220;color:white}
+header{padding:15px;background:#2563eb;text-align:center;font-size:20px}
 
-header{
-padding:15px;
-background:#2563eb;
-text-align:center;
-font-size:20px;
-}
-
-.container{
-padding:10px;
-}
+.container{padding:10px}
 
 .card{
 background:#111827;
 padding:10px;
 margin:10px 0;
-border-radius:10px;
+border-radius:10px
 }
 
 button{
@@ -35,26 +22,26 @@ padding:6px;
 margin:4px;
 border:none;
 border-radius:6px;
-cursor:pointer;
+cursor:pointer
 }
 
-.del{background:#ef4444;color:white;}
-.edit{background:#f59e0b;color:white;}
-.status{background:#22c55e;color:white;}
+.del{background:#ef4444;color:white}
+.edit{background:#f59e0b;color:white}
+.status{background:#22c55e;color:white}
 
 input{
 padding:8px;
 margin:5px 0;
 width:100%;
 border:none;
-border-radius:8px;
+border-radius:8px
 }
 
 img{
 width:100%;
 height:120px;
 object-fit:contain;
-background:#000;
+background:#000
 }
 </style>
 
@@ -74,7 +61,7 @@ background:#000;
 <input id="pprice" type="number" placeholder="Price">
 <input type="file" id="pimage">
 
-<button onclick="uploadProduct()">Upload Product</button>
+<button onclick="uploadProduct()" id="uploadBtn">Upload Product</button>
 
 </div>
 
@@ -91,7 +78,11 @@ background:#000;
 const API = "https://phone-store-backend-9w7p.onrender.com";
 
 /* ================= UPLOAD PRODUCT ================= */
-function uploadProduct(){
+async function uploadProduct(){
+
+let btn = document.getElementById("uploadBtn");
+btn.innerText = "Uploading...";
+btn.disabled = true;
 
 let name = document.getElementById("pname").value;
 let price = document.getElementById("pprice").value;
@@ -99,6 +90,8 @@ let file = document.getElementById("pimage").files[0];
 
 if(!name || !price || !file){
 alert("Fill all fields");
+btn.innerText = "Upload Product";
+btn.disabled = false;
 return;
 }
 
@@ -107,24 +100,34 @@ formData.append("name", name);
 formData.append("price", price);
 formData.append("image", file);
 
-fetch(API + "/products", {
+try{
+
+let res = await fetch(API + "/products", {
 method:"POST",
 body:formData
-})
-.then(res=>res.json())
-.then(()=>{
-alert("Product uploaded ✔");
-loadProducts();
 });
 
+if(res.ok){
+alert("Product uploaded ✔");
+loadProducts();
+}else{
+alert("Upload failed ❌");
+}
+
+}catch(err){
+console.log(err);
+alert("Server error ❌");
+}
+
+btn.innerText = "Upload Product";
+btn.disabled = false;
 }
 
 /* ================= ORDERS ================= */
-function loadOrders(){
+async function loadOrders(){
 
-fetch(API+"/orders")
-.then(r=>r.json())
-.then(data=>{
+let res = await fetch(API+"/orders");
+let data = await res.json();
 
 document.getElementById("orders").innerHTML =
 (data||[]).map(o=>`
@@ -138,16 +141,17 @@ document.getElementById("orders").innerHTML =
 
 <button class="status" onclick="updateStatus('${o._id}','Processing')">Processing</button>
 <button class="status" onclick="updateStatus('${o._id}','Delivered')">Delivered</button>
-<button class="del" onclick="deleteOrder('${o._id}')">Delete</button>
+
+<!-- DELETE ORDER -->
+<button class="del" onclick="deleteOrder('${o._id}')">Delete Order</button>
 
 </div>
 
 `).join("");
 
-});
-
 }
 
+/* UPDATE ORDER STATUS */
 function updateStatus(id,status){
 
 fetch(API+"/update-order-status/"+id,{
@@ -159,19 +163,26 @@ body:JSON.stringify({status})
 
 }
 
+/* DELETE ORDER (FIXED) */
 function deleteOrder(id){
 
-fetch(API+"/order/"+id,{method:"DELETE"})
-.then(()=>loadOrders());
+if(!confirm("Delete this order?")) return;
+
+fetch(API+"/order/"+id,{
+method:"DELETE"
+})
+.then(res=>res.json())
+.then(()=>{
+loadOrders();
+});
 
 }
 
 /* ================= PRODUCTS ================= */
-function loadProducts(){
+async function loadProducts(){
 
-fetch(API+"/products")
-.then(r=>r.json())
-.then(data=>{
+let res = await fetch(API+"/products");
+let data = await res.json();
 
 document.getElementById("products").innerHTML =
 (data||[]).map(p=>`
@@ -186,16 +197,17 @@ document.getElementById("products").innerHTML =
 <input id="p${p._id}" placeholder="new price">
 
 <button class="edit" onclick="updatePrice('${p._id}')">Update Price</button>
-<button class="del" onclick="deleteProduct('${p._id}')">Delete</button>
+
+<!-- DELETE PRODUCT -->
+<button class="del" onclick="deleteProduct('${p._id}')">Delete Product</button>
 
 </div>
 
 `).join("");
 
-});
-
 }
 
+/* UPDATE PRICE */
 function updatePrice(id){
 
 let price = document.getElementById("p"+id).value;
@@ -209,14 +221,28 @@ body:JSON.stringify({price})
 
 }
 
+/* DELETE PRODUCT */
 function deleteProduct(id){
 
-fetch(API+"/product/"+id,{method:"DELETE"})
-.then(()=>loadProducts());
+if(!confirm("Delete this product?")) return;
+
+fetch(API+"/product/"+id,{
+method:"DELETE"
+})
+.then(res=>res.json())
+.then(()=>{
+loadProducts();
+});
 
 }
 
-/* ================= INIT ================= */
+/* AUTO REFRESH */
+setInterval(()=>{
+loadOrders();
+loadProducts();
+},10000);
+
+/* INIT */
 loadOrders();
 loadProducts();
 
