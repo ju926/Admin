@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Admin Dashboard</title>
+<title>Pro Admin Dashboard</title>
 
 <style>
 body{
@@ -12,6 +12,7 @@ background:#0b1220;
 color:white;
 }
 
+/* HEADER */
 header{
 padding:15px;
 background:linear-gradient(90deg,#2563eb,#dc2626);
@@ -31,8 +32,8 @@ height:100vh;
 
 input{
 padding:10px;
-margin:5px;
-width:250px;
+margin:6px;
+width:260px;
 border:none;
 border-radius:8px;
 background:#1f2937;
@@ -51,13 +52,30 @@ font-weight:bold;
 .edit{background:#f59e0b}
 .del{background:#ef4444;color:white}
 
-/* GRID */
+/* DASHBOARD */
 .container{padding:10px}
 
+/* ANALYTICS (SHOPIFY STYLE) */
+.stats{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+gap:10px;
+margin-bottom:15px;
+}
+
+.stat{
+background:linear-gradient(135deg,#2563eb,#1f2937);
+padding:15px;
+border-radius:10px;
+text-align:center;
+font-weight:bold;
+}
+
+/* PRODUCT GRID FIX */
 #products,#orders{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-gap:10px;
+gap:12px;
 }
 
 .card{
@@ -79,7 +97,7 @@ border-radius:8px;
 
 <body>
 
-<header>🔐 ADMIN PANEL</header>
+<header>🛠 SHOPIFY LEVEL ADMIN</header>
 
 <!-- LOGIN -->
 <div id="loginBox">
@@ -92,11 +110,16 @@ border-radius:8px;
 <!-- DASHBOARD -->
 <div id="dashboard" style="display:none" class="container">
 
+<!-- ANALYTICS -->
+<div id="analytics" class="stats"></div>
+
 <h3>🛍 Products</h3>
 <div id="products"></div>
 
 <h3>📦 Orders</h3>
 <div id="orders"></div>
+
+<button onclick="logout()" class="del">Logout</button>
 
 </div>
 
@@ -104,32 +127,52 @@ border-radius:8px;
 
 const API="https://phone-store-backend-9w7p.onrender.com";
 
-/* LOGIN */
+/* ================= LOGIN ================= */
 async function login(){
 
-let res = await fetch(API+"/admin-login",{
+let res=await fetch(API+"/admin-login",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({
-email:document.getElementById("email").value,
-password:document.getElementById("pass").value
+email:email.value,
+password:pass.value
 })
 });
 
-let data = await res.json();
+let data=await res.json();
 
 if(data.token){
+
 localStorage.setItem("adminToken",data.token);
+
 document.getElementById("loginBox").style.display="none";
 document.getElementById("dashboard").style.display="block";
+
 loadAll();
+
 }else{
 alert("Login failed");
 }
 
 }
 
-/* AUTH HEADER */
+/* ================= AUTO LOGIN (FIX) ================= */
+function checkLogin(){
+
+if(localStorage.getItem("adminToken")){
+loginBox.style.display="none";
+dashboard.style.display="block";
+loadAll();
+}else{
+loginBox.style.display="flex";
+dashboard.style.display="none";
+}
+
+}
+
+checkLogin();
+
+/* ================= AUTH ================= */
 function auth(){
 return {
 "Authorization":"Bearer "+localStorage.getItem("adminToken"),
@@ -137,20 +180,58 @@ return {
 };
 }
 
-/* LOAD ALL */
+/* ================= LOAD ALL ================= */
 function loadAll(){
+loadAnalytics();
 loadProducts();
 loadOrders();
 }
 
-/* PRODUCTS */
+/* ================= ANALYTICS (SHOPIFY STYLE) ================= */
+async function loadAnalytics(){
+
+let [pRes,oRes]=await Promise.all([
+fetch(API+"/products"),
+fetch(API+"/orders",{headers:auth()})
+]);
+
+let products=await pRes.json();
+let orders=await oRes.json();
+
+let revenue=0;
+let totalOrders=orders.length;
+let totalProducts=products.length;
+
+let sales={};
+
+orders.forEach(o=>{
+(o.items||[]).forEach(i=>{
+if(!sales[i.name]) sales[i.name]={qty:0,rev:0};
+
+sales[i.name].qty += i.quantity || 1;
+sales[i.name].rev += i.price*(i.quantity||1);
+
+revenue += i.price*(i.quantity||1);
+});
+});
+
+let best = Object.entries(sales).sort((a,b)=>b[1].qty-a[1].qty)[0];
+
+analytics.innerHTML=`
+<div class="stat">💰 Revenue<br>KES ${revenue}</div>
+<div class="stat">📦 Orders<br>${totalOrders}</div>
+<div class="stat">🛍 Products<br>${totalProducts}</div>
+<div class="stat">🏆 Best Seller<br>${best?best[0]:"None"}</div>
+`;
+}
+
+/* ================= PRODUCTS ================= */
 async function loadProducts(){
 
-let res = await fetch(API+"/products");
-let data = await res.json();
+let res=await fetch(API+"/products");
+let data=await res.json();
 
-document.getElementById("products").innerHTML =
-data.map(p=>`
+products.innerHTML=data.map(p=>`
 
 <div class="card">
 
@@ -158,10 +239,10 @@ data.map(p=>`
 <h4>${p.name}</h4>
 <p>KES ${p.price}</p>
 
-<input id="name${p._id}" placeholder="New name">
+<input id="name${p._id}" placeholder="Edit name">
 <button class="edit" onclick="updateName('${p._id}')">Edit Name</button>
 
-<input id="price${p._id}" placeholder="New price">
+<input id="price${p._id}" placeholder="Edit price">
 <button class="edit" onclick="updatePrice('${p._id}')">Edit Price</button>
 
 <button class="del" onclick="deleteProduct('${p._id}')">Delete</button>
@@ -172,7 +253,7 @@ data.map(p=>`
 
 }
 
-/* UPDATE NAME */
+/* ================= UPDATE NAME ================= */
 function updateName(id){
 
 fetch(API+"/product/"+id,{
@@ -185,7 +266,7 @@ name:document.getElementById("name"+id).value
 
 }
 
-/* UPDATE PRICE */
+/* ================= UPDATE PRICE ================= */
 function updatePrice(id){
 
 fetch(API+"/product/"+id,{
@@ -198,7 +279,7 @@ price:document.getElementById("price"+id).value
 
 }
 
-/* DELETE */
+/* ================= DELETE ================= */
 function deleteProduct(id){
 
 fetch(API+"/product/"+id,{
@@ -208,28 +289,26 @@ headers:auth()
 
 }
 
-/* ORDERS */
+/* ================= ORDERS ================= */
 async function loadOrders(){
 
-let res = await fetch(API+"/orders",{
-headers:{
-"Authorization":"Bearer "+localStorage.getItem("adminToken")
-}
-});
+let res=await fetch(API+"/orders",{headers:auth()});
+let data=await res.json();
 
-let data = await res.json();
-
-document.getElementById("orders").innerHTML =
-data.map(o=>`
-
+orders.innerHTML=data.map(o=>`
 <div class="card">
 <h4>${o.fullName}</h4>
-<p>${o.total}</p>
+<p>KES ${o.total}</p>
 <p>${o.status}</p>
 </div>
-
 `).join("");
 
+}
+
+/* ================= LOGOUT ================= */
+function logout(){
+localStorage.removeItem("adminToken");
+location.reload();
 }
 
 </script>
