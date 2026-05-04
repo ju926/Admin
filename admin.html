@@ -2,7 +2,10 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Pro Admin Dashboard</title>
+<title>Shopify Admin v2</title>
+
+<!-- CHART LIBRARY -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body{
@@ -55,7 +58,7 @@ font-weight:bold;
 /* DASHBOARD */
 .container{padding:10px}
 
-/* ANALYTICS (SHOPIFY STYLE) */
+/* ANALYTICS CARDS */
 .stats{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
@@ -71,7 +74,7 @@ text-align:center;
 font-weight:bold;
 }
 
-/* PRODUCT GRID FIX */
+/* GRID FIX */
 #products,#orders{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
@@ -92,12 +95,20 @@ background:#000;
 border-radius:8px;
 }
 
+/* CHART */
+canvas{
+background:#111827;
+padding:10px;
+border-radius:10px;
+margin-bottom:15px;
+}
+
 </style>
 </head>
 
 <body>
 
-<header>🛠 SHOPIFY LEVEL ADMIN</header>
+<header>📊 SHOPIFY ADMIN DASHBOARD v2</header>
 
 <!-- LOGIN -->
 <div id="loginBox">
@@ -113,6 +124,12 @@ border-radius:8px;
 <!-- ANALYTICS -->
 <div id="analytics" class="stats"></div>
 
+<!-- CHART -->
+<div class="card">
+<h3>📈 Sales Analytics</h3>
+<canvas id="salesChart"></canvas>
+</div>
+
 <h3>🛍 Products</h3>
 <div id="products"></div>
 
@@ -126,6 +143,7 @@ border-radius:8px;
 <script>
 
 const API="https://phone-store-backend-9w7p.onrender.com";
+let chart;
 
 /* ================= LOGIN ================= */
 async function login(){
@@ -142,21 +160,17 @@ password:pass.value
 let data=await res.json();
 
 if(data.token){
-
 localStorage.setItem("adminToken",data.token);
-
-document.getElementById("loginBox").style.display="none";
-document.getElementById("dashboard").style.display="block";
-
+loginBox.style.display="none";
+dashboard.style.display="block";
 loadAll();
-
 }else{
 alert("Login failed");
 }
 
 }
 
-/* ================= AUTO LOGIN (FIX) ================= */
+/* ================= AUTO LOGIN ================= */
 function checkLogin(){
 
 if(localStorage.getItem("adminToken")){
@@ -187,7 +201,7 @@ loadProducts();
 loadOrders();
 }
 
-/* ================= ANALYTICS (SHOPIFY STYLE) ================= */
+/* ================= SHOPIFY ANALYTICS v2 ================= */
 async function loadAnalytics(){
 
 let [pRes,oRes]=await Promise.all([
@@ -199,30 +213,74 @@ let products=await pRes.json();
 let orders=await oRes.json();
 
 let revenue=0;
-let totalOrders=orders.length;
-let totalProducts=products.length;
-
-let sales={};
+let dailySales={};
+let productSales={};
 
 orders.forEach(o=>{
-(o.items||[]).forEach(i=>{
-if(!sales[i.name]) sales[i.name]={qty:0,rev:0};
 
-sales[i.name].qty += i.quantity || 1;
-sales[i.name].rev += i.price*(i.quantity||1);
+let date=new Date(o.date).toLocaleDateString();
+
+if(!dailySales[date]) dailySales[date]=0;
+dailySales[date]+=o.total || 0;
+
+(o.items||[]).forEach(i=>{
+
+if(!productSales[i.name]){
+productSales[i.name]={qty:0,rev:0};
+}
+
+productSales[i.name].qty += i.quantity || 1;
+productSales[i.name].rev += i.price*(i.quantity||1);
 
 revenue += i.price*(i.quantity||1);
-});
+
 });
 
-let best = Object.entries(sales).sort((a,b)=>b[1].qty-a[1].qty)[0];
+});
 
+let best = Object.entries(productSales)
+.sort((a,b)=>b[1].qty-a[1].qty)[0];
+
+/* STATS */
 analytics.innerHTML=`
 <div class="stat">💰 Revenue<br>KES ${revenue}</div>
-<div class="stat">📦 Orders<br>${totalOrders}</div>
-<div class="stat">🛍 Products<br>${totalProducts}</div>
+<div class="stat">📦 Orders<br>${orders.length}</div>
+<div class="stat">🛍 Products<br>${products.length}</div>
 <div class="stat">🏆 Best Seller<br>${best?best[0]:"None"}</div>
 `;
+
+/* CHART */
+let labels=Object.keys(dailySales);
+let values=Object.values(dailySales);
+
+let ctx=document.getElementById("salesChart");
+
+if(chart) chart.destroy();
+
+chart=new Chart(ctx,{
+type:"line",
+data:{
+labels:labels,
+datasets:[{
+label:"Daily Sales (KES)",
+data:values,
+borderColor:"#2563eb",
+backgroundColor:"rgba(37,99,235,0.2)",
+tension:0.3
+}]
+},
+options:{
+responsive:true,
+plugins:{
+legend:{labels:{color:"white"}}
+},
+scales:{
+x:{ticks:{color:"white"}},
+y:{ticks:{color:"white"}}
+}
+}
+});
+
 }
 
 /* ================= PRODUCTS ================= */
@@ -253,9 +311,8 @@ products.innerHTML=data.map(p=>`
 
 }
 
-/* ================= UPDATE NAME ================= */
+/* UPDATE NAME */
 function updateName(id){
-
 fetch(API+"/product/"+id,{
 method:"PUT",
 headers:auth(),
@@ -263,12 +320,10 @@ body:JSON.stringify({
 name:document.getElementById("name"+id).value
 })
 }).then(loadProducts);
-
 }
 
-/* ================= UPDATE PRICE ================= */
+/* UPDATE PRICE */
 function updatePrice(id){
-
 fetch(API+"/product/"+id,{
 method:"PUT",
 headers:auth(),
@@ -276,17 +331,14 @@ body:JSON.stringify({
 price:document.getElementById("price"+id).value
 })
 }).then(loadProducts);
-
 }
 
-/* ================= DELETE ================= */
+/* DELETE */
 function deleteProduct(id){
-
 fetch(API+"/product/"+id,{
 method:"DELETE",
 headers:auth()
 }).then(loadProducts);
-
 }
 
 /* ================= ORDERS ================= */
