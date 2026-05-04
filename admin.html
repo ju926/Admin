@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Admin Panel</title>
+<title>Secure Admin</title>
 
 <style>
 body{
@@ -20,275 +20,234 @@ font-size:20px;
 font-weight:bold;
 }
 
+/* LOGIN */
+#loginBox{
+position:fixed;
+top:0;left:0;
+width:100%;height:100%;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+background:#0b1220;
+}
+
+input{
+padding:10px;
+margin:8px;
+width:260px;
+border-radius:8px;
+border:none;
+background:#1f2937;
+color:white;
+}
+
+button{
+padding:10px;
+width:260px;
+border:none;
+border-radius:8px;
+background:#2563eb;
+color:white;
+cursor:pointer;
+}
+
+/* DASHBOARD */
 .container{padding:10px}
 
-/* GRID */
-#products{
+.stats{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+gap:10px;
+}
+
+.stat{
+background:#111827;
+padding:10px;
+border-radius:10px;
+text-align:center;
+}
+
+#products,#orders{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-gap:12px;
+gap:10px;
 }
 
-#orders{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-gap:12px;
-}
-
-/* CARD */
 .card{
 background:#111827;
 padding:10px;
 border-radius:10px;
-transition:0.2s;
 }
 
-.card:hover{
-transform:scale(1.02);
-}
-
-/* IMAGE */
 img{
 width:100%;
 height:120px;
 object-fit:contain;
 background:#000;
-border-radius:8px;
-}
-
-/* INPUTS */
-input{
-padding:10px;
-margin:6px 0;
-width:100%;
-border:none;
-border-radius:10px;
-outline:none;
-background:#1f2937;
-color:white;
-transition:0.2s;
-}
-
-input:focus{
-border:1px solid #2563eb;
-box-shadow:0 0 8px #2563eb55;
-}
-
-/* BEAUTIFUL FILE UPLOAD */
-.file-upload{
-margin:8px 0;
 }
 
 .file-upload label{
 display:block;
 background:linear-gradient(90deg,#2563eb,#dc2626);
-color:white;
-padding:12px;
-border-radius:10px;
+padding:10px;
+border-radius:8px;
 text-align:center;
 cursor:pointer;
-font-weight:bold;
-transition:0.3s;
 }
 
-.file-upload label:hover{
-transform:scale(1.03);
-opacity:0.9;
-}
-
-.file-upload input{
-display:none;
-}
-
-/* BUTTONS */
-button{
-padding:8px;
-margin:5px;
-border:none;
-border-radius:8px;
-cursor:pointer;
-font-weight:bold;
-transition:0.2s;
-}
-
-button:hover{
-transform:scale(1.05);
-opacity:0.9;
-}
-
-.del{background:#ef4444;color:white}
-.edit{background:#f59e0b;color:white}
-.status{background:#22c55e;color:white}
-
-/* HEADINGS */
-h3{
-margin-top:20px;
-}
+.file-upload input{display:none}
 
 </style>
-
 </head>
 
 <body>
 
-<header>🛠 Admin Dashboard</header>
+<header>🔐 SECURE ADMIN PANEL</header>
+
+<!-- LOGIN -->
+<div id="loginBox">
+<h2>Admin Login</h2>
+<input id="email" placeholder="Email">
+<input id="pass" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:none">
 
 <div class="container">
+
+<div class="stats">
+<div class="stat">Products</div>
+<div class="stat">Orders</div>
+</div>
 
 <h3>➕ Add Product</h3>
 
 <div class="card">
-
-<input id="pname" placeholder="Phone Name">
-<input id="pprice" type="number" placeholder="Price">
+<input id="pname" placeholder="Name">
+<input id="pprice" placeholder="Price">
 
 <div class="file-upload">
-<label for="pimage">📷 Choose Product Image</label>
+<label for="pimage">Choose Image</label>
 <input type="file" id="pimage">
 </div>
 
-<button onclick="uploadProduct()" id="uploadBtn">Upload Product</button>
-
+<button onclick="addProduct()">Upload</button>
 </div>
 
-<h3>📦 Orders</h3>
-<div id="orders">Loading...</div>
+<h3>Products</h3>
+<div id="products"></div>
 
-<h3>🛍 Products</h3>
-<div id="products">Loading...</div>
+<h3>Orders</h3>
+<div id="orders"></div>
+
+<button onclick="logout()">Logout</button>
+
+</div>
 
 </div>
 
 <script>
 
-const API = "https://phone-store-backend-9w7p.onrender.com";
+const API="https://phone-store-backend-9w7p.onrender.com";
 
-/* UPLOAD PRODUCT */
-async function uploadProduct(){
-
-let btn=document.getElementById("uploadBtn");
-btn.innerText="Uploading...";
-btn.disabled=true;
-
-let name=document.getElementById("pname").value;
-let price=document.getElementById("pprice").value;
-let file=document.getElementById("pimage").files[0];
-
-if(!name || !price || !file){
-alert("Fill all fields");
-btn.innerText="Upload Product";
-btn.disabled=false;
-return;
+function getToken(){
+return localStorage.getItem("adminToken");
 }
 
-let formData=new FormData();
-formData.append("name",name);
-formData.append("price",price);
-formData.append("image",file);
+/* LOGIN */
+async function login(){
 
-try{
-let res=await fetch(API+"/products",{method:"POST",body:formData});
+let email=document.getElementById("email").value;
+let password=document.getElementById("pass").value;
 
-if(res.ok){
-alert("Product uploaded ✔");
-loadProducts();
-}else{
-alert("Upload failed ❌");
-}
-}catch(e){
-alert("Server error ❌");
-}
+let res=await fetch(API+"/admin-login",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({email,password})
+});
 
-btn.innerText="Upload Product";
-btn.disabled=false;
-}
-
-/* ORDERS */
-async function loadOrders(){
-
-let res=await fetch(API+"/orders");
 let data=await res.json();
 
-document.getElementById("orders").innerHTML=
-(data||[]).map(o=>`
+if(data.token){
+localStorage.setItem("adminToken",data.token);
+document.getElementById("loginBox").style.display="none";
+document.getElementById("dashboard").style.display="block";
+loadAll();
+}else{
+alert("Login failed");
+}
 
-<div class="card">
+}
 
-<h4>${o.fullName || ""}</h4>
-<p>Status: ${o.status}</p>
-<p>Payment: ${o.paymentMethod || ""}</p>
-<p>Code: ${o.transactionCode || ""}</p>
+/* HEADERS */
+function authHeader(){
+return {
+"Authorization":"Bearer "+getToken()
+};
+}
 
-<button class="status" onclick="updateStatus('${o._id}','Processing')">Processing</button>
-<button class="status" onclick="updateStatus('${o._id}','Delivered')">Delivered</button>
-<button class="del" onclick="deleteOrder('${o._id}')">Delete</button>
-
-</div>
-
-`).join("");
-
+/* LOAD DATA */
+async function loadAll(){
+loadProducts();
+loadOrders();
 }
 
 /* PRODUCTS */
 async function loadProducts(){
-
 let res=await fetch(API+"/products");
 let data=await res.json();
 
 document.getElementById("products").innerHTML=
-(data||[]).map(p=>`
-
+data.map(p=>`
 <div class="card">
-
 <img src="${p.image}">
 <h4>${p.name}</h4>
-<p>KES ${p.price}</p>
-
-<input id="p${p._id}" placeholder="new price">
-
-<button class="edit" onclick="updatePrice('${p._id}')">Update</button>
-<button class="del" onclick="deleteProduct('${p._id}')">Delete</button>
-
+<p>${p.price}</p>
 </div>
-
 `).join("");
-
 }
 
-/* UPDATE PRICE */
-function updatePrice(id){
+/* ORDERS */
+async function loadOrders(){
+let res=await fetch(API+"/orders",{
+headers:authHeader()
+});
+let data=await res.json();
 
-let price=document.getElementById("p"+id).value;
-
-fetch(API+"/product/"+id,{
-method:"PUT",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({price})
-}).then(loadProducts);
+document.getElementById("orders").innerHTML=
+data.map(o=>`
+<div class="card">
+<h4>${o.fullName}</h4>
+<p>${o.total}</p>
+</div>
+`).join("");
 }
 
-/* DELETE PRODUCT */
-function deleteProduct(id){
-fetch(API+"/product/"+id,{method:"DELETE"}).then(loadProducts);
-}
+/* ADD PRODUCT */
+async function addProduct(){
 
-/* ORDER STATUS */
-function updateStatus(id,status){
-fetch(API+"/update-order-status/"+id,{
-method:"PUT",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({status})
-}).then(loadOrders);
-}
+let form=new FormData();
+form.append("name",document.getElementById("pname").value);
+form.append("price",document.getElementById("pprice").value);
+form.append("image",document.getElementById("pimage").files[0]);
 
-/* DELETE ORDER */
-function deleteOrder(id){
-fetch(API+"/order/"+id,{method:"DELETE"}).then(loadOrders);
-}
+await fetch(API+"/products",{
+method:"POST",
+headers:authHeader(),
+body:form
+});
 
-/* INIT */
-loadOrders();
 loadProducts();
+}
+
+/* LOGOUT */
+function logout(){
+localStorage.removeItem("adminToken");
+location.reload();
+}
 
 </script>
 
