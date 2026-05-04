@@ -2,9 +2,8 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Shopify Admin v2</title>
+<title>MALONE ADMIN</title>
 
-<!-- CHART LIBRARY -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -17,11 +16,21 @@ color:white;
 
 /* HEADER */
 header{
+display:flex;
+align-items:center;
+justify-content:center;
+gap:10px;
 padding:15px;
 background:linear-gradient(90deg,#2563eb,#dc2626);
-text-align:center;
 font-size:20px;
 font-weight:bold;
+}
+
+header img{
+width:40px;
+height:40px;
+border-radius:8px;
+object-fit:cover;
 }
 
 /* LOGIN */
@@ -58,7 +67,7 @@ font-weight:bold;
 /* DASHBOARD */
 .container{padding:10px}
 
-/* ANALYTICS CARDS */
+/* ANALYTICS */
 .stats{
 display:grid;
 grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
@@ -74,10 +83,10 @@ text-align:center;
 font-weight:bold;
 }
 
-/* GRID FIX */
+/* PRODUCT GRID (RESPONSIVE FIX) */
 #products,#orders{
 display:grid;
-grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+grid-template-columns:repeat(4,1fr);
 gap:12px;
 }
 
@@ -85,6 +94,8 @@ gap:12px;
 background:#111827;
 padding:10px;
 border-radius:10px;
+max-width:100%;
+box-sizing:border-box;
 }
 
 img{
@@ -93,6 +104,7 @@ height:120px;
 object-fit:contain;
 background:#000;
 border-radius:8px;
+display:block;
 }
 
 /* CHART */
@@ -103,12 +115,30 @@ border-radius:10px;
 margin-bottom:15px;
 }
 
+/* TABLET */
+@media(max-width:1000px){
+#products,#orders{
+grid-template-columns:repeat(3,1fr);
+}
+}
+
+/* MOBILE */
+@media(max-width:600px){
+#products,#orders{
+grid-template-columns:repeat(2,1fr);
+}
+}
+
 </style>
 </head>
 
 <body>
 
-<header>📊 SHOPIFY ADMIN DASHBOARD v2</header>
+<!-- HEADER -->
+<header>
+<img src="lg.png" onerror="this.style.display='none'">
+MALONE ADMIN
+</header>
 
 <!-- LOGIN -->
 <div id="loginBox">
@@ -145,7 +175,7 @@ margin-bottom:15px;
 const API="https://phone-store-backend-9w7p.onrender.com";
 let chart;
 
-/* ================= LOGIN ================= */
+/* LOGIN */
 async function login(){
 
 let res=await fetch(API+"/admin-login",{
@@ -170,7 +200,7 @@ alert("Login failed");
 
 }
 
-/* ================= AUTO LOGIN ================= */
+/* AUTO LOGIN */
 function checkLogin(){
 
 if(localStorage.getItem("adminToken")){
@@ -186,7 +216,7 @@ dashboard.style.display="none";
 
 checkLogin();
 
-/* ================= AUTH ================= */
+/* AUTH */
 function auth(){
 return {
 "Authorization":"Bearer "+localStorage.getItem("adminToken"),
@@ -194,14 +224,14 @@ return {
 };
 }
 
-/* ================= LOAD ALL ================= */
+/* LOAD ALL */
 function loadAll(){
 loadAnalytics();
 loadProducts();
 loadOrders();
 }
 
-/* ================= SHOPIFY ANALYTICS v2 ================= */
+/* ANALYTICS v2 */
 async function loadAnalytics(){
 
 let [pRes,oRes]=await Promise.all([
@@ -241,12 +271,11 @@ revenue += i.price*(i.quantity||1);
 let best = Object.entries(productSales)
 .sort((a,b)=>b[1].qty-a[1].qty)[0];
 
-/* STATS */
 analytics.innerHTML=`
 <div class="stat">💰 Revenue<br>KES ${revenue}</div>
 <div class="stat">📦 Orders<br>${orders.length}</div>
 <div class="stat">🛍 Products<br>${products.length}</div>
-<div class="stat">🏆 Best Seller<br>${best?best[0]:"None"}</div>
+<div class="stat">🏆 Best<br>${best?best[0]:"None"}</div>
 `;
 
 /* CHART */
@@ -262,7 +291,7 @@ type:"line",
 data:{
 labels:labels,
 datasets:[{
-label:"Daily Sales (KES)",
+label:"Sales (KES)",
 data:values,
 borderColor:"#2563eb",
 backgroundColor:"rgba(37,99,235,0.2)",
@@ -271,9 +300,7 @@ tension:0.3
 },
 options:{
 responsive:true,
-plugins:{
-legend:{labels:{color:"white"}}
-},
+plugins:{legend:{labels:{color:"white"}}},
 scales:{
 x:{ticks:{color:"white"}},
 y:{ticks:{color:"white"}}
@@ -283,7 +310,7 @@ y:{ticks:{color:"white"}}
 
 }
 
-/* ================= PRODUCTS ================= */
+/* PRODUCTS */
 async function loadProducts(){
 
 let res=await fetch(API+"/products");
@@ -311,25 +338,20 @@ products.innerHTML=data.map(p=>`
 
 }
 
-/* UPDATE NAME */
+/* UPDATE */
 function updateName(id){
 fetch(API+"/product/"+id,{
 method:"PUT",
 headers:auth(),
-body:JSON.stringify({
-name:document.getElementById("name"+id).value
-})
+body:JSON.stringify({name:document.getElementById("name"+id).value})
 }).then(loadProducts);
 }
 
-/* UPDATE PRICE */
 function updatePrice(id){
 fetch(API+"/product/"+id,{
 method:"PUT",
 headers:auth(),
-body:JSON.stringify({
-price:document.getElementById("price"+id).value
-})
+body:JSON.stringify({price:document.getElementById("price"+id).value})
 }).then(loadProducts);
 }
 
@@ -341,7 +363,7 @@ headers:auth()
 }).then(loadProducts);
 }
 
-/* ================= ORDERS ================= */
+/* ORDERS */
 async function loadOrders(){
 
 let res=await fetch(API+"/orders",{headers:auth()});
@@ -357,7 +379,7 @@ orders.innerHTML=data.map(o=>`
 
 }
 
-/* ================= LOGOUT ================= */
+/* LOGOUT */
 function logout(){
 localStorage.removeItem("adminToken");
 location.reload();
