@@ -6,17 +6,39 @@
 
 <style>
 body{margin:0;font-family:Arial;background:#0b1220;color:white}
-header{padding:15px;background:#2563eb;text-align:center;font-size:20px}
+
+header{
+padding:15px;
+background:#2563eb;
+text-align:center;
+font-size:20px
+}
 
 .container{padding:10px}
 
+/* ✅ GRID FIX FOR PRODUCTS */
+#products{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+gap:12px;
+}
+
+/* OPTIONAL GRID FOR ORDERS */
+#orders{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:12px;
+}
+
+/* CARD */
 .card{
 background:#111827;
 padding:10px;
-margin:10px 0;
-border-radius:10px
+border-radius:10px;
+margin:0;
 }
 
+/* BUTTONS */
 button{
 padding:6px;
 margin:4px;
@@ -29,6 +51,7 @@ cursor:pointer
 .edit{background:#f59e0b;color:white}
 .status{background:#22c55e;color:white}
 
+/* INPUT */
 input{
 padding:8px;
 margin:5px 0;
@@ -37,11 +60,19 @@ border:none;
 border-radius:8px
 }
 
+/* IMAGE */
 img{
 width:100%;
 height:120px;
 object-fit:contain;
-background:#000
+background:#000;
+border-radius:8px;
+}
+
+/* OPTIONAL HOVER EFFECT */
+.card:hover{
+transform:scale(1.02);
+transition:0.2s;
 }
 </style>
 
@@ -141,8 +172,6 @@ document.getElementById("orders").innerHTML =
 
 <button class="status" onclick="updateStatus('${o._id}','Processing')">Processing</button>
 <button class="status" onclick="updateStatus('${o._id}','Delivered')">Delivered</button>
-
-<!-- DELETE ORDER -->
 <button class="del" onclick="deleteOrder('${o._id}')">Delete Order</button>
 
 </div>
@@ -151,7 +180,7 @@ document.getElementById("orders").innerHTML =
 
 }
 
-/* UPDATE ORDER STATUS */
+/* UPDATE STATUS */
 function updateStatus(id,status){
 
 fetch(API+"/update-order-status/"+id,{
@@ -163,7 +192,7 @@ body:JSON.stringify({status})
 
 }
 
-/* DELETE ORDER (FIXED) */
+/* DELETE ORDER */
 function deleteOrder(id){
 
 if(!confirm("Delete this order?")) return;
@@ -171,10 +200,7 @@ if(!confirm("Delete this order?")) return;
 fetch(API+"/order/"+id,{
 method:"DELETE"
 })
-.then(res=>res.json())
-.then(()=>{
-loadOrders();
-});
+.then(()=>loadOrders());
 
 }
 
@@ -190,15 +216,12 @@ document.getElementById("products").innerHTML =
 <div class="card">
 
 <img src="${p.image}">
-
 <h4>${p.name}</h4>
 <p>KES ${p.price}</p>
 
 <input id="p${p._id}" placeholder="new price">
 
 <button class="edit" onclick="updatePrice('${p._id}')">Update Price</button>
-
-<!-- DELETE PRODUCT -->
 <button class="del" onclick="deleteProduct('${p._id}')">Delete Product</button>
 
 </div>
@@ -229,10 +252,7 @@ if(!confirm("Delete this product?")) return;
 fetch(API+"/product/"+id,{
 method:"DELETE"
 })
-.then(res=>res.json())
-.then(()=>{
-loadProducts();
-});
+.then(()=>loadProducts());
 
 }
 
@@ -242,11 +262,10 @@ loadOrders();
 loadProducts();
 },10000);
 
-/* INIT */
 loadOrders();
 loadProducts();
 
 </script>
 
 </body>
-</html>
+  </html>
