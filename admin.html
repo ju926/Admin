@@ -4,6 +4,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>MALONE ADMIN</title>
 
+<!-- SOCKET.IO -->
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
 <style>
 
 body{
@@ -51,20 +54,9 @@ cursor:pointer;
 font-weight:bold;
 }
 
-.edit{
-background:#f59e0b;
-color:white;
-}
-
-.del{
-background:#ef4444;
-color:white;
-}
-
-.upload{
-background:#2563eb;
-color:white;
-}
+.edit{background:#f59e0b;color:white;}
+.del{background:#ef4444;color:white;}
+.upload{background:#2563eb;color:white;}
 
 .container{
 padding:10px;
@@ -114,12 +106,24 @@ white-space:pre-line;
 border-radius:10px;
 }
 
-@media(max-width:600px){
+/* STATUS BADGE */
+.status{
+padding:5px 10px;
+border-radius:8px;
+display:inline-block;
+font-weight:bold;
+font-size:12px;
+margin-top:5px;
+}
 
+.paid{background:#22c55e33;color:#22c55e;}
+.pending{background:#facc1533;color:#facc15;}
+.failed{background:#ef444433;color:#ef4444;}
+
+@media(max-width:600px){
 #products,#orders{
 grid-template-columns:repeat(2,1fr);
 }
-
 }
 
 </style>
@@ -136,18 +140,13 @@ MALONE ADMIN
 <h2>Admin Login</h2>
 
 <input id="email" placeholder="Email">
-
 <input id="pass" type="password" placeholder="Password">
 
 <button onclick="login()">Login</button>
 
 </div>
 
-<div
-id="dashboard"
-style="display:none"
-class="container"
->
+<div id="dashboard" style="display:none" class="container">
 
 <div id="stats" class="stats"></div>
 
@@ -156,45 +155,25 @@ class="container"
 <div class="card">
 
 <input id="pname" placeholder="Product Name">
+<input id="pprice" type="number" placeholder="Price">
+<input type="file" id="pimage">
 
-<input
-id="pprice"
-type="number"
-placeholder="Price"
->
-
-<input
-type="file"
-id="pimage"
->
-
-<button
-class="upload"
-onclick="uploadProduct()"
->
+<button class="upload" onclick="uploadProduct()">
 Upload Product
 </button>
 
 </div>
 
 <h3>🛍 Products</h3>
-
 <div id="products"></div>
 
-<h3>📦 Orders</h3>
-
+<h3>📦 Orders (LIVE)</h3>
 <div id="orders"></div>
 
 <h3>📡 Logs</h3>
+<div id="logs">Logs appear here...</div>
 
-<div id="logs">
-Logs appear here...
-</div>
-
-<button
-onclick="logout()"
-class="del"
->
+<button onclick="logout()" class="del">
 Logout
 </button>
 
@@ -202,318 +181,164 @@ Logout
 
 <script>
 
-const API =
-"https://phone-store-backend-9w7p.onrender.com";
+const API = "https://phone-store-backend-9w7p.onrender.com";
+
+/* SOCKET */
+const socket = io(API);
 
 function log(msg){
+document.getElementById("logs").innerHTML += "\n> " + msg;
+}
 
-document.getElementById("logs")
-.innerHTML += "\n> " + msg;
+/* LIVE TRACKING */
+function enableLiveTracking(){
+
+socket.on("statusUpdate", (data)=>{
+log("LIVE: " + JSON.stringify(data));
+loadOrders();
+loadStats();
+});
 
 }
 
 /* LOGIN */
-
 async function login(){
 
-let res = await fetch(
-API + "/admin-login",
-{
+let res = await fetch(API + "/admin-login",{
 method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
+headers:{"Content-Type":"application/json"},
 body:JSON.stringify({
 email:email.value,
 password:pass.value
 })
-}
-);
+});
 
 let data = await res.json();
 
 if(data.token){
 
-localStorage.setItem(
-"adminToken",
-data.token
-);
+localStorage.setItem("adminToken",data.token);
 
 loginBox.style.display="none";
-
 dashboard.style.display="block";
 
+enableLiveTracking();
 loadAll();
 
 }else{
-
 alert("Login failed");
-
 }
 
 }
 
 /* AUTH */
-
 function auth(){
-
 return{
-Authorization:
-"Bearer " +
-localStorage.getItem("adminToken")
+Authorization:"Bearer " + localStorage.getItem("adminToken")
 };
-
 }
 
-/* LOAD */
-
+/* LOAD ALL */
 function loadAll(){
-
 loadStats();
 loadProducts();
 loadOrders();
-
 }
 
 /* STATS */
-
 async function loadStats(){
 
-let [pRes,oRes] =
-await Promise.all([
-
+let [pRes,oRes] = await Promise.all([
 fetch(API + "/products"),
-
-fetch(API + "/orders",{
-headers:auth()
-})
-
+fetch(API + "/orders",{headers:auth()})
 ]);
 
-let products =
-await pRes.json();
-
-let ordersData =
-await oRes.json();
+let products = await pRes.json();
+let ordersData = await oRes.json();
 
 let revenue = 0;
-
 ordersData.forEach(o=>{
 revenue += o.total || 0;
 });
 
 stats.innerHTML = `
-
-<div class="stat">
-📦 Products<br>
-${products.length}
-</div>
-
-<div class="stat">
-🛒 Orders<br>
-${ordersData.length}
-</div>
-
-<div class="stat">
-💰 Revenue<br>
-KES ${revenue}
-</div>
-
+<div class="stat">📦 Products<br>${products.length}</div>
+<div class="stat">🛒 Orders<br>${ordersData.length}</div>
+<div class="stat">💰 Revenue<br>KES ${revenue}</div>
 `;
 
 }
 
 /* UPLOAD */
-
 async function uploadProduct(){
 
 try{
 
-let form =
-new FormData();
+let form = new FormData();
+form.append("name",pname.value);
+form.append("price",pprice.value);
+form.append("image",pimage.files[0]);
 
-form.append(
-"name",
-pname.value
-);
-
-form.append(
-"price",
-pprice.value
-);
-
-form.append(
-"image",
-pimage.files[0]
-);
-
-let res = await fetch(
-API + "/products",
-{
+await fetch(API + "/products",{
 method:"POST",
 headers:{
-Authorization:
-"Bearer " +
-localStorage.getItem("adminToken")
+Authorization:"Bearer " + localStorage.getItem("adminToken")
 },
 body:form
-}
-);
+});
 
-let data =
-await res.json();
-
-log(JSON.stringify(data));
-
+log("Product uploaded");
 loadProducts();
 
 }catch(err){
-
 log(err.message);
-
 }
 
 }
 
 /* PRODUCTS */
-
 async function loadProducts(){
 
-let res =
-await fetch(API + "/products");
+let res = await fetch(API + "/products");
+let data = await res.json();
 
-let data =
-await res.json();
-
-products.innerHTML =
-data.map(p=>`
-
+products.innerHTML = data.map(p=>`
 <div class="card">
 
 <img src="${p.image}">
-
 <h4>${p.name}</h4>
-
 <p>KES ${p.price}</p>
 
-<input
-id="name${p._id}"
-placeholder="Edit name"
->
-
-<button
-class="edit"
-onclick="updateName('${p._id}')"
->
-Edit
-</button>
-
-<input
-id="price${p._id}"
-placeholder="Edit price"
->
-
-<button
-class="edit"
-onclick="updatePrice('${p._id}')"
->
-Price
-</button>
-
-<button
-class="del"
-onclick="deleteProduct('${p._id}')"
->
-Delete
-</button>
-
 </div>
-
 `).join("");
 
 }
 
-/* UPDATE */
-
-function updateName(id){
-
-fetch(API + "/product/" + id,{
-method:"PUT",
-headers:Object.assign({
-"Content-Type":"application/json"
-},auth()),
-body:JSON.stringify({
-name:
-document.getElementById(
-"name"+id
-).value
-})
-}).then(loadProducts);
-
-}
-
-function updatePrice(id){
-
-fetch(API + "/product/" + id,{
-method:"PUT",
-headers:Object.assign({
-"Content-Type":"application/json"
-},auth()),
-body:JSON.stringify({
-price:
-document.getElementById(
-"price"+id
-).value
-})
-}).then(loadProducts);
-
-}
-
-/* DELETE PRODUCT */
-
-function deleteProduct(id){
-
-fetch(API + "/product/" + id,{
-method:"DELETE",
-headers:auth()
-}).then(loadProducts);
-
-}
-
 /* ORDERS */
-
 async function loadOrders(){
 
-let res =
-await fetch(API + "/orders",{
+let res = await fetch(API + "/orders",{
 headers:auth()
 });
 
-let data =
-await res.json();
+let data = await res.json();
 
-orders.innerHTML =
-data.map(o=>`
+orders.innerHTML = data.map(o=>`
 
 <div class="card">
 
 <h4>${o.phone}</h4>
-
 <p>KES ${o.total}</p>
 
-<p>${o.status}</p>
+<div class="status ${o.status.toLowerCase()}">
+${o.status}
+</div>
 
-<button
-class="edit"
-onclick="markPaid('${o._id}')"
->
-Paid
+<button class="edit" onclick="markPaid('${o._id}')">
+Mark Paid
 </button>
 
-<button
-class="del"
-onclick="deleteOrder('${o._id}')"
->
+<button class="del" onclick="deleteOrder('${o._id}')">
 Delete
 </button>
 
@@ -524,53 +349,33 @@ Delete
 }
 
 /* MARK PAID */
-
 async function markPaid(id){
 
-await fetch(
-API + "/order/" + id + "/paid",
-{
+await fetch(API + "/order/" + id + "/paid",{
 method:"PUT",
 headers:auth()
-}
-);
+});
 
 loadOrders();
 
 }
 
-/* DELETE ORDER */
-
+/* DELETE */
 async function deleteOrder(id){
 
-if(!confirm(
-"Delete this order?"
-)){
-return;
-}
-
-await fetch(
-API + "/order/" + id,
-{
+await fetch(API + "/order/" + id,{
 method:"DELETE",
 headers:auth()
-}
-);
+});
 
 loadOrders();
 
 }
 
 /* LOGOUT */
-
 function logout(){
-
-localStorage.removeItem(
-"adminToken"
-);
-
+localStorage.removeItem("adminToken");
 location.reload();
-
 }
 
 </script>
